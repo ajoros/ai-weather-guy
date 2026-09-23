@@ -1,0 +1,22 @@
+.venv/
+__pycache__/
+*.py[cod]
+.cache/
+.DS_Store
+
+# Cooked maps (~640 MB) and per-PNG init stamps
+site/frames/
+site/manifest.json
+
+# Local preview clips
+previews/
+
+# One-off plot dumps
+plots/
+*.png
+*.mp4
+*.gif
+
+# Earth Engine leftovers
+*.ee.png
+*.init

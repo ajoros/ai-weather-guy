@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>WeatherNext 3 — free fields</title>
+  <style>
+    :root { color-scheme: dark; }
+    body {
+      margin: 0;
+      font-family: ui-sans-serif, system-ui, sans-serif;
+      background: #111418;
+      color: #e8eaed;
+    }
+    header {
+      position: sticky; top: 0; z-index: 5;
+      background: #111418ee;
+      backdrop-filter: blur(8px);
+      padding: 10px 16px 8px;
+      border-bottom: 1px solid #2a2f36;
+    }
+    h1 { font-size: 16px; margin: 0 0 4px; font-weight: 650; }
+    .meta, .hint { color: #9aa0a6; font-size: 13px; }
+    .clock { font-size: 18px; font-weight: 650; margin: 6px 0 2px; }
+    .banner {
+      background: #3c2a12; color: #fdd663; font-size: 12px;
+      padding: 6px 10px; border-radius: 6px; margin-top: 8px; max-width: 1100px;
+    }
+    .controls {
+      display: flex; align-items: center; gap: 10px;
+      margin-top: 8px; max-width: 1100px;
+    }
+    button {
+      background: #2a2f36; color: #e8eaed; border: 1px solid #3c434d;
+      border-radius: 6px; padding: 6px 10px; cursor: pointer;
+    }
+    input[type=range] { flex: 1; }
+    .maps {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      padding: 12px 16px 40px;
+    }
+    .toggles { margin-top: 8px; font-size: 13px; color: #9aa0a6; }
+    .toggles label { cursor: pointer; }
+    figure { margin: 0; }
+    figure img {
+      width: 100%; background: #fff; border-radius: 6px; display: block;
+    }
+    figcaption { font-size: 12px; color: #9aa0a6; margin: 4px 0 0; }
+    .miss { color: #f28b82; padding: 24px; }
+    .err { color: #f28b82; padding: 18px; }
+    @media (max-width: 900px) { .maps { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>WeatherNext 3 — free stats, NA + North Pacific</h1>
+    <div class="meta" id="meta">Loading manifest…</div>
+    <div class="clock" id="clock"></div>
+    <div class="hint" id="hint">← → step time · space play · Home / End</div>
+    <div class="controls">
+      <button id="prev" type="button">←</button>
+      <button id="play" type="button">Play</button>
+      <button id="next" type="button">→</button>
+      <input id="slider" type="range" min="0" max="0" value="0" />
+      <span id="lead">F+000</span>
+    </div>
+    <div class="toggles">
+      <label><input type="checkbox" id="aviation" /> Cloud layers (aviation)</label>
+    </div>
+    <div class="banner" id="banner"></div>
+  </header>
+  <div class="maps" id="maps"></div>
+  <script>
+    const $ = (id) => document.getElementById(id);
+    const CLOUD_LAYERS = new Set(["cloud_low", "cloud_mid", "cloud_high"]);
+    let manifest = null;
+    let i = 0;
+    let timer = null;
+
+    function visibleVars() {
+      const av = $("aviation") && $("aviation").checked;
+      return manifest.variables.filter((v) => av || !CLOUD_LAYERS.has(v.id));
+    }
+
+    function setMeta() {
+      const vis = visibleVars();
+      const hourly = manifest.hourly_init || manifest.init;
+      const syn = manifest.synoptic_init || manifest.init;
+      const mix = hourly && syn && hourly !== syn
+        ? "F+1–48 " + hourly + " hourly   ·   F+54–360 " + syn + " synoptic"
+        : (hourly || manifest.run);
+      $("meta").textContent =
+        mix + "   ·   " + manifest.frames.length + " times   ·   " +
+        vis.length + " maps   ·   stats mean   ·   10–75N  120E–60W";
+    }
+
+    function buildFigures() {
+      const box = $("maps");
+      box.innerHTML = "";
+      if (!manifest.frames.length) {
+        box.innerHTML = '<p class="miss">Cook is running — no frames yet. Refresh shortly.</p>';
+        return;
+      }
+      visibleVars().forEach((v) => {
+        const fig = document.createElement("figure");
+        const img = document.createElement("img");
+        img.id = "img-" + v.id;
+        img.alt = v.label;
+        const cap = document.createElement("figcaption");
+        cap.textContent = v.label + (v.units ? " (" + v.units + ")" : "");
+        fig.appendChild(img);
+        fig.appendChild(cap);
+        box.appendChild(fig);
+      });
+      show();
+    }
+
+    function frameSrc(fr, id) {
+      const src = (fr.files && fr.files[id]) || "";
+      if (!src) return "";
+      return src + "?t=" + encodeURIComponent(fr.init || manifest.init || "");
+    }
+
+    function show() {
+      const fr = manifest.frames[i];
+      const init = fr.init || manifest.init;
+      const kind = fr.lead <= 48 ? "hourly" : "synoptic";
+      $("lead").textContent = "F+" + String(fr.lead).padStart(3, "0");
+      $("clock").textContent =
+        "Valid " + fr.valid + "   ·   F+" + fr.lead + " h   ·   init " + init + " " + kind;
+      $("slider").value = String(i);
+      for (const v of visibleVars()) {
+        const img = $("img-" + v.id);
+        if (!img) continue;
+        const src = frameSrc(fr, v.id);
+        if (src) img.src = src;
+        else img.removeAttribute("src");
+      }
+      preload(i - 1);
+      preload(i + 1);
+    }
+
+    function preload(j) {
+      if (!manifest || j < 0 || j >= manifest.frames.length) return;
+      const fr = manifest.frames[j];
+      for (const v of visibleVars()) {
+        const src = frameSrc(fr, v.id);
+        if (!src) continue;
+        const im = new Image();
+        im.src = src;
+      }
+    }
+
+    function step(d) {
+      i = (i + d + manifest.frames.length) % manifest.frames.length;
+      show();
+    }
+
+    function togglePlay() {
+      if (timer) {
+        clearInterval(timer);
+        timer = null;
+        $("play").textContent = "Play";
+        return;
+      }
+      $("play").textContent = "Pause";
+      timer = setInterval(() => step(1), 400);
+    }
+
+    $("slider").addEventListener("input", (e) => {
+      i = Number(e.target.value);
+      show();
+    });
+    $("prev").addEventListener("click", () => step(-1));
+    $("next").addEventListener("click", () => step(1));
+    $("play").addEventListener("click", togglePlay);
+    $("aviation").addEventListener("change", () => {
+      setMeta();
+      buildFigures();
+    });
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "ArrowLeft" || e.key === ",") { e.preventDefault(); step(-1); }
+      if (e.key === "ArrowRight" || e.key === ".") { e.preventDefault(); step(1); }
+      if (e.key === " ") { e.preventDefault(); togglePlay(); }
+      if (e.key === "Home") { e.preventDefault(); i = 0; show(); }
+      if (e.key === "End") {
+        e.preventDefault();
+        i = manifest.frames.length - 1;
+        show();
+      }
+    });
+
+    fetch("manifest.json?t=" + Date.now())
+      .then((r) => {
+        if (!r.ok) throw new Error("Run cook.py first (no manifest.json yet).");
+        return r.json();
+      })
+      .then((m) => {
+        manifest = m;
+        $("banner").textContent = m.disclaimer || "";
+        if (m.keys) $("hint").textContent = m.keys;
+        $("slider").max = String(Math.max(0, m.frames.length - 1));
+        setMeta();
+        buildFigures();
+        setInterval(() => {
+          fetch("manifest.json?t=" + Date.now())
+            .then((r) => r.json())
+            .then((next) => {
+              if (
+                next.generated === manifest.generated &&
+                next.init === manifest.init &&
+                next.synoptic_init === manifest.synoptic_init
+              ) return;
+              const lead = manifest.frames[i] && manifest.frames[i].lead;
+              const varsChanged = JSON.stringify(next.variables) !== JSON.stringify(manifest.variables);
+              const nFrames = manifest.frames.length;
+              manifest = next;
+              $("slider").max = String(Math.max(0, next.frames.length - 1));
+              const j = next.frames.findIndex((f) => f.lead === lead);
+              i = j >= 0 ? j : 0;
+              setMeta();
+              if (varsChanged || next.frames.length !== nFrames) buildFigures();
+              else show();
+            })
+            .catch(() => {});
+        }, 15000);
+      })
+      .catch((err) => {
+        $("meta").innerHTML = '<span class="err">' + err.message + "</span>";
+      });
+  </script>
+</body>
+</html>

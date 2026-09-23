@@ -1,0 +1,8 @@
+xarray
+zarr
+obstore
+matplotlib
+numpy
+google-auth
+dask[array]
+earthengine-api

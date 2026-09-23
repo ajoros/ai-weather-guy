@@ -1,0 +1,578 @@
+{
+  "run": "20260919_00hr_01_preds",
+  "init": "2026-09-19T00:00:00Z",
+  "step_hours": 6,
+  "max_lead": 360,
+  "domain": {
+    "lat": [
+      10.0,
+      75.0
+    ],
+    "lon_360": [
+      120.0,
+      310.0
+    ]
+  },
+  "source": "gs://weathernext3_statistics_spatial/weathernext_3_0_0_statistics/zarr/2026_to_present/20260919_00hr_01_preds/predictions.zarr",
+  "note": "Free-tier stats Zarr. Spatial crop is display-only; chunks are global.",
+  "variables": [
+    {
+      "id": "slp",
+      "label": "SLP (mean)",
+      "units": "hPa"
+    },
+    {
+      "id": "qpf6",
+      "label": "6-hr QPF (mean)",
+      "units": "mm"
+    },
+    {
+      "id": "wind10",
+      "label": "10 m wind (mean)",
+      "units": "m/s"
+    }
+  ],
+  "generated": "2026-09-19T10:13:56Z",
+  "frames": [
+    {
+      "lead": 6,
+      "valid": "2026-09-19T06:00:00Z",
+      "files": {
+        "slp": "frames/slp_f006.png",
+        "qpf6": "frames/qpf6_f006.png",
+        "wind10": "frames/wind10_f006.png"
+      }
+    },
+    {
+      "lead": 12,
+      "valid": "2026-09-19T12:00:00Z",
+      "files": {
+        "slp": "frames/slp_f012.png",
+        "qpf6": "frames/qpf6_f012.png",
+        "wind10": "frames/wind10_f012.png"
+      }
+    },
+    {
+      "lead": 18,
+      "valid": "2026-09-19T18:00:00Z",
+      "files": {
+        "slp": "frames/slp_f018.png",
+        "qpf6": "frames/qpf6_f018.png",
+        "wind10": "frames/wind10_f018.png"
+      }
+    },
+    {
+      "lead": 24,
+      "valid": "2026-09-20T00:00:00Z",
+      "files": {
+        "slp": "frames/slp_f024.png",
+        "qpf6": "frames/qpf6_f024.png",
+        "wind10": "frames/wind10_f024.png"
+      }
+    },
+    {
+      "lead": 30,
+      "valid": "2026-09-20T06:00:00Z",
+      "files": {
+        "slp": "frames/slp_f030.png",
+        "qpf6": "frames/qpf6_f030.png",
+        "wind10": "frames/wind10_f030.png"
+      }
+    },
+    {
+      "lead": 36,
+      "valid": "2026-09-20T12:00:00Z",
+      "files": {
+        "slp": "frames/slp_f036.png",
+        "qpf6": "frames/qpf6_f036.png",
+        "wind10": "frames/wind10_f036.png"
+      }
+    },
+    {
+      "lead": 42,
+      "valid": "2026-09-20T18:00:00Z",
+      "files": {
+        "slp": "frames/slp_f042.png",
+        "qpf6": "frames/qpf6_f042.png",
+        "wind10": "frames/wind10_f042.png"
+      }
+    },
+    {
+      "lead": 48,
+      "valid": "2026-09-21T00:00:00Z",
+      "files": {
+        "slp": "frames/slp_f048.png",
+        "qpf6": "frames/qpf6_f048.png",
+        "wind10": "frames/wind10_f048.png"
+      }
+    },
+    {
+      "lead": 54,
+      "valid": "2026-09-21T06:00:00Z",
+      "files": {
+        "slp": "frames/slp_f054.png",
+        "qpf6": "frames/qpf6_f054.png",
+        "wind10": "frames/wind10_f054.png"
+      }
+    },
+    {
+      "lead": 60,
+      "valid": "2026-09-21T12:00:00Z",
+      "files": {
+        "slp": "frames/slp_f060.png",
+        "qpf6": "frames/qpf6_f060.png",
+        "wind10": "frames/wind10_f060.png"
+      }
+    },
+    {
+      "lead": 66,
+      "valid": "2026-09-21T18:00:00Z",
+      "files": {
+        "slp": "frames/slp_f066.png",
+        "qpf6": "frames/qpf6_f066.png",
+        "wind10": "frames/wind10_f066.png"
+      }
+    },
+    {
+      "lead": 72,
+      "valid": "2026-09-22T00:00:00Z",
+      "files": {
+        "slp": "frames/slp_f072.png",
+        "qpf6": "frames/qpf6_f072.png",
+        "wind10": "frames/wind10_f072.png"
+      }
+    },
+    {
+      "lead": 78,
+      "valid": "2026-09-22T06:00:00Z",
+      "files": {
+        "slp": "frames/slp_f078.png",
+        "qpf6": "frames/qpf6_f078.png",
+        "wind10": "frames/wind10_f078.png"
+      }
+    },
+    {
+      "lead": 84,
+      "valid": "2026-09-22T12:00:00Z",
+      "files": {
+        "slp": "frames/slp_f084.png",
+        "qpf6": "frames/qpf6_f084.png",
+        "wind10": "frames/wind10_f084.png"
+      }
+    },
+    {
+      "lead": 90,
+      "valid": "2026-09-22T18:00:00Z",
+      "files": {
+        "slp": "frames/slp_f090.png",
+        "qpf6": "frames/qpf6_f090.png",
+        "wind10": "frames/wind10_f090.png"
+      }
+    },
+    {
+      "lead": 96,
+      "valid": "2026-09-23T00:00:00Z",
+      "files": {
+        "slp": "frames/slp_f096.png",
+        "qpf6": "frames/qpf6_f096.png",
+        "wind10": "frames/wind10_f096.png"
+      }
+    },
+    {
+      "lead": 102,
+      "valid": "2026-09-23T06:00:00Z",
+      "files": {
+        "slp": "frames/slp_f102.png",
+        "qpf6": "frames/qpf6_f102.png",
+        "wind10": "frames/wind10_f102.png"
+      }
+    },
+    {
+      "lead": 108,
+      "valid": "2026-09-23T12:00:00Z",
+      "files": {
+        "slp": "frames/slp_f108.png",
+        "qpf6": "frames/qpf6_f108.png",
+        "wind10": "frames/wind10_f108.png"
+      }
+    },
+    {
+      "lead": 114,
+      "valid": "2026-09-23T18:00:00Z",
+      "files": {
+        "slp": "frames/slp_f114.png",
+        "qpf6": "frames/qpf6_f114.png",
+        "wind10": "frames/wind10_f114.png"
+      }
+    },
+    {
+      "lead": 120,
+      "valid": "2026-09-24T00:00:00Z",
+      "files": {
+        "slp": "frames/slp_f120.png",
+        "qpf6": "frames/qpf6_f120.png",
+        "wind10": "frames/wind10_f120.png"
+      }
+    },
+    {
+      "lead": 126,
+      "valid": "2026-09-24T06:00:00Z",
+      "files": {
+        "slp": "frames/slp_f126.png",
+        "qpf6": "frames/qpf6_f126.png",
+        "wind10": "frames/wind10_f126.png"
+      }
+    },
+    {
+      "lead": 132,
+      "valid": "2026-09-24T12:00:00Z",
+      "files": {
+        "slp": "frames/slp_f132.png",
+        "qpf6": "frames/qpf6_f132.png",
+        "wind10": "frames/wind10_f132.png"
+      }
+    },
+    {
+      "lead": 138,
+      "valid": "2026-09-24T18:00:00Z",
+      "files": {
+        "slp": "frames/slp_f138.png",
+        "qpf6": "frames/qpf6_f138.png",
+        "wind10": "frames/wind10_f138.png"
+      }
+    },
+    {
+      "lead": 144,
+      "valid": "2026-09-25T00:00:00Z",
+      "files": {
+        "slp": "frames/slp_f144.png",
+        "qpf6": "frames/qpf6_f144.png",
+        "wind10": "frames/wind10_f144.png"
+      }
+    },
+    {
+      "lead": 150,
+      "valid": "2026-09-25T06:00:00Z",
+      "files": {
+        "slp": "frames/slp_f150.png",
+        "qpf6": "frames/qpf6_f150.png",
+        "wind10": "frames/wind10_f150.png"
+      }
+    },
+    {
+      "lead": 156,
+      "valid": "2026-09-25T12:00:00Z",
+      "files": {
+        "slp": "frames/slp_f156.png",
+        "qpf6": "frames/qpf6_f156.png",
+        "wind10": "frames/wind10_f156.png"
+      }
+    },
+    {
+      "lead": 162,
+      "valid": "2026-09-25T18:00:00Z",
+      "files": {
+        "slp": "frames/slp_f162.png",
+        "qpf6": "frames/qpf6_f162.png",
+        "wind10": "frames/wind10_f162.png"
+      }
+    },
+    {
+      "lead": 168,
+      "valid": "2026-09-26T00:00:00Z",
+      "files": {
+        "slp": "frames/slp_f168.png",
+        "qpf6": "frames/qpf6_f168.png",
+        "wind10": "frames/wind10_f168.png"
+      }
+    },
+    {
+      "lead": 174,
+      "valid": "2026-09-26T06:00:00Z",
+      "files": {
+        "slp": "frames/slp_f174.png",
+        "qpf6": "frames/qpf6_f174.png",
+        "wind10": "frames/wind10_f174.png"
+      }
+    },
+    {
+      "lead": 180,
+      "valid": "2026-09-26T12:00:00Z",
+      "files": {
+        "slp": "frames/slp_f180.png",
+        "qpf6": "frames/qpf6_f180.png",
+        "wind10": "frames/wind10_f180.png"
+      }
+    },
+    {
+      "lead": 186,
+      "valid": "2026-09-26T18:00:00Z",
+      "files": {
+        "slp": "frames/slp_f186.png",
+        "qpf6": "frames/qpf6_f186.png",
+        "wind10": "frames/wind10_f186.png"
+      }
+    },
+    {
+      "lead": 192,
+      "valid": "2026-09-27T00:00:00Z",
+      "files": {
+        "slp": "frames/slp_f192.png",
+        "qpf6": "frames/qpf6_f192.png",
+        "wind10": "frames/wind10_f192.png"
+      }
+    },
+    {
+      "lead": 198,
+      "valid": "2026-09-27T06:00:00Z",
+      "files": {
+        "slp": "frames/slp_f198.png",
+        "qpf6": "frames/qpf6_f198.png",
+        "wind10": "frames/wind10_f198.png"
+      }
+    },
+    {
+      "lead": 204,
+      "valid": "2026-09-27T12:00:00Z",
+      "files": {
+        "slp": "frames/slp_f204.png",
+        "qpf6": "frames/qpf6_f204.png",
+        "wind10": "frames/wind10_f204.png"
+      }
+    },
+    {
+      "lead": 210,
+      "valid": "2026-09-27T18:00:00Z",
+      "files": {
+        "slp": "frames/slp_f210.png",
+        "qpf6": "frames/qpf6_f210.png",
+        "wind10": "frames/wind10_f210.png"
+      }
+    },
+    {
+      "lead": 216,
+      "valid": "2026-09-28T00:00:00Z",
+      "files": {
+        "slp": "frames/slp_f216.png",
+        "qpf6": "frames/qpf6_f216.png",
+        "wind10": "frames/wind10_f216.png"
+      }
+    },
+    {
+      "lead": 222,
+      "valid": "2026-09-28T06:00:00Z",
+      "files": {
+        "slp": "frames/slp_f222.png",
+        "qpf6": "frames/qpf6_f222.png",
+        "wind10": "frames/wind10_f222.png"
+      }
+    },
+    {
+      "lead": 228,
+      "valid": "2026-09-28T12:00:00Z",
+      "files": {
+        "slp": "frames/slp_f228.png",
+        "qpf6": "frames/qpf6_f228.png",
+        "wind10": "frames/wind10_f228.png"
+      }
+    },
+    {
+      "lead": 234,
+      "valid": "2026-09-28T18:00:00Z",
+      "files": {
+        "slp": "frames/slp_f234.png",
+        "qpf6": "frames/qpf6_f234.png",
+        "wind10": "frames/wind10_f234.png"
+      }
+    },
+    {
+      "lead": 240,
+      "valid": "2026-09-29T00:00:00Z",
+      "files": {
+        "slp": "frames/slp_f240.png",
+        "qpf6": "frames/qpf6_f240.png",
+        "wind10": "frames/wind10_f240.png"
+      }
+    },
+    {
+      "lead": 246,
+      "valid": "2026-09-29T06:00:00Z",
+      "files": {
+        "slp": "frames/slp_f246.png",
+        "qpf6": "frames/qpf6_f246.png",
+        "wind10": "frames/wind10_f246.png"
+      }
+    },
+    {
+      "lead": 252,
+      "valid": "2026-09-29T12:00:00Z",
+      "files": {
+        "slp": "frames/slp_f252.png",
+        "qpf6": "frames/qpf6_f252.png",
+        "wind10": "frames/wind10_f252.png"
+      }
+    },
+    {
+      "lead": 258,
+      "valid": "2026-09-29T18:00:00Z",
+      "files": {
+        "slp": "frames/slp_f258.png",
+        "qpf6": "frames/qpf6_f258.png",
+        "wind10": "frames/wind10_f258.png"
+      }
+    },
+    {
+      "lead": 264,
+      "valid": "2026-09-30T00:00:00Z",
+      "files": {
+        "slp": "frames/slp_f264.png",
+        "qpf6": "frames/qpf6_f264.png",
+        "wind10": "frames/wind10_f264.png"
+      }
+    },
+    {
+      "lead": 270,
+      "valid": "2026-09-30T06:00:00Z",
+      "files": {
+        "slp": "frames/slp_f270.png",
+        "qpf6": "frames/qpf6_f270.png",
+        "wind10": "frames/wind10_f270.png"
+      }
+    },
+    {
+      "lead": 276,
+      "valid": "2026-09-30T12:00:00Z",
+      "files": {
+        "slp": "frames/slp_f276.png",
+        "qpf6": "frames/qpf6_f276.png",
+        "wind10": "frames/wind10_f276.png"
+      }
+    },
+    {
+      "lead": 282,
+      "valid": "2026-09-30T18:00:00Z",
+      "files": {
+        "slp": "frames/slp_f282.png",
+        "qpf6": "frames/qpf6_f282.png",
+        "wind10": "frames/wind10_f282.png"
+      }
+    },
+    {
+      "lead": 288,
+      "valid": "2026-10-01T00:00:00Z",
+      "files": {
+        "slp": "frames/slp_f288.png",
+        "qpf6": "frames/qpf6_f288.png",
+        "wind10": "frames/wind10_f288.png"
+      }
+    },
+    {
+      "lead": 294,
+      "valid": "2026-10-01T06:00:00Z",
+      "files": {
+        "slp": "frames/slp_f294.png",
+        "qpf6": "frames/qpf6_f294.png",
+        "wind10": "frames/wind10_f294.png"
+      }
+    },
+    {
+      "lead": 300,
+      "valid": "2026-10-01T12:00:00Z",
+      "files": {
+        "slp": "frames/slp_f300.png",
+        "qpf6": "frames/qpf6_f300.png",
+        "wind10": "frames/wind10_f300.png"
+      }
+    },
+    {
+      "lead": 306,
+      "valid": "2026-10-01T18:00:00Z",
+      "files": {
+        "slp": "frames/slp_f306.png",
+        "qpf6": "frames/qpf6_f306.png",
+        "wind10": "frames/wind10_f306.png"
+      }
+    },
+    {
+      "lead": 312,
+      "valid": "2026-10-02T00:00:00Z",
+      "files": {
+        "slp": "frames/slp_f312.png",
+        "qpf6": "frames/qpf6_f312.png",
+        "wind10": "frames/wind10_f312.png"
+      }
+    },
+    {
+      "lead": 318,
+      "valid": "2026-10-02T06:00:00Z",
+      "files": {
+        "slp": "frames/slp_f318.png",
+        "qpf6": "frames/qpf6_f318.png",
+        "wind10": "frames/wind10_f318.png"
+      }
+    },
+    {
+      "lead": 324,
+      "valid": "2026-10-02T12:00:00Z",
+      "files": {
+        "slp": "frames/slp_f324.png",
+        "qpf6": "frames/qpf6_f324.png",
+        "wind10": "frames/wind10_f324.png"
+      }
+    },
+    {
+      "lead": 330,
+      "valid": "2026-10-02T18:00:00Z",
+      "files": {
+        "slp": "frames/slp_f330.png",
+        "qpf6": "frames/qpf6_f330.png",
+        "wind10": "frames/wind10_f330.png"
+      }
+    },
+    {
+      "lead": 336,
+      "valid": "2026-10-03T00:00:00Z",
+      "files": {
+        "slp": "frames/slp_f336.png",
+        "qpf6": "frames/qpf6_f336.png",
+        "wind10": "frames/wind10_f336.png"
+      }
+    },
+    {
+      "lead": 342,
+      "valid": "2026-10-03T06:00:00Z",
+      "files": {
+        "slp": "frames/slp_f342.png",
+        "qpf6": "frames/qpf6_f342.png",
+        "wind10": "frames/wind10_f342.png"
+      }
+    },
+    {
+      "lead": 348,
+      "valid": "2026-10-03T12:00:00Z",
+      "files": {
+        "slp": "frames/slp_f348.png",
+        "qpf6": "frames/qpf6_f348.png",
+        "wind10": "frames/wind10_f348.png"
+      }
+    },
+    {
+      "lead": 354,
+      "valid": "2026-10-03T18:00:00Z",
+      "files": {
+        "slp": "frames/slp_f354.png",
+        "qpf6": "frames/qpf6_f354.png",
+        "wind10": "frames/wind10_f354.png"
+      }
+    },
+    {
+      "lead": 360,
+      "valid": "2026-10-04T00:00:00Z",
+      "files": {
+        "slp": "frames/slp_f360.png",
+        "qpf6": "frames/qpf6_f360.png",
+        "wind10": "frames/wind10_f360.png"
+      }
+    }
+  ]
+}

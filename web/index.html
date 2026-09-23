@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>WeatherNext 3 — free-tier loop</title>
+  <style>
+    :root { color-scheme: dark; }
+    body {
+      margin: 0; font-family: ui-sans-serif, system-ui, sans-serif;
+      background: #111418; color: #e8eaed;
+    }
+    header {
+      padding: 12px 18px 8px; border-bottom: 1px solid #2a2f36;
+    }
+    h1 { font-size: 16px; margin: 0 0 4px; font-weight: 650; }
+    .meta, .valid { color: #9aa0a6; font-size: 13px; }
+    .valid { color: #e8eaed; margin-top: 6px; }
+    nav { display: flex; gap: 8px; flex-wrap: wrap; margin: 10px 0 0; }
+    nav button, .play {
+      background: #2a2f36; color: #e8eaed; border: 1px solid #3c434d;
+      border-radius: 6px; padding: 6px 10px; cursor: pointer;
+    }
+    nav button.active { background: #0b57d0; border-color: #0b57d0; }
+    .stage { padding: 10px 18px 18px; }
+    .stage img {
+      width: 100%; max-width: 1200px; background: #fff; border-radius: 6px;
+      display: block;
+    }
+    .controls { display: flex; align-items: center; gap: 12px; margin: 10px 0; max-width: 1200px; }
+    input[type=range] { flex: 1; }
+    .err { color: #f28b82; padding: 18px; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>WeatherNext 3 free tier — NA + North Pacific</h1>
+    <div class="meta" id="meta">Loading manifest…</div>
+    <div class="valid" id="valid"></div>
+    <nav id="vars"></nav>
+  </header>
+  <div class="stage">
+    <div class="controls">
+      <button class="play" id="play" type="button">Play</button>
+      <input id="slider" type="range" min="0" max="0" value="0" />
+      <span id="lead">f000</span>
+    </div>
+    <img id="frame" alt="forecast frame" />
+  </div>
+  <script>
+    const $ = (id) => document.getElementById(id);
+    let manifest = null;
+    let varId = "slp";
+    let i = 0;
+    let timer = null;
+
+    function show() {
+      const fr = manifest.frames[i];
+      $("frame").src = fr.files[varId];
+      $("lead").textContent = "f" + String(fr.lead).padStart(3, "0");
+      $("valid").textContent = "Lead " + fr.lead + " h   valid " + fr.valid;
+      $("slider").value = String(i);
+    }
+
+    function setVar(id) {
+      varId = id;
+      document.querySelectorAll("nav button").forEach((b) => {
+        b.classList.toggle("active", b.dataset.id === id);
+      });
+      show();
+    }
+
+    $("slider").addEventListener("input", (e) => {
+      i = Number(e.target.value);
+      show();
+    });
+    $("play").addEventListener("click", () => {
+      if (timer) {
+        clearInterval(timer);
+        timer = null;
+        $("play").textContent = "Play";
+        return;
+      }
+      $("play").textContent = "Pause";
+      timer = setInterval(() => {
+        i = (i + 1) % manifest.frames.length;
+        show();
+      }, 350);
+    });
+
+    fetch("manifest.json")
+      .then((r) => {
+        if (!r.ok) throw new Error("Run plot_free_loop.py first (no manifest.json)");
+        return r.json();
+      })
+      .then((m) => {
+        manifest = m;
+        $("meta").textContent =
+          "Init " + m.init + "   step " + m.step_hours + " h   " +
+          m.frames.length + " frames   " + m.run + "   stats mean 0.1°";
+        $("slider").max = String(m.frames.length - 1);
+        const nav = $("vars");
+        m.variables.forEach((v, n) => {
+          const b = document.createElement("button");
+          b.textContent = v.label;
+          b.dataset.id = v.id;
+          if (n === 0) b.classList.add("active");
+          b.addEventListener("click", () => setVar(v.id));
+          nav.appendChild(b);
+        });
+        show();
+      })
+      .catch((err) => {
+        $("meta").innerHTML = '<span class="err">' + err.message + "</span>";
+      });
+  </script>
+</body>
+</html>
