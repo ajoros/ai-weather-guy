@@ -6,3 +6,4 @@ numpy
 google-auth
 dask[array]
 earthengine-api
+Pillow

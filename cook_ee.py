@@ -477,6 +477,7 @@ def main() -> None:
     targets = [h for h in targets if h <= long_h]
     if not args.leads and not args.force and old_hourly == hourly and old_syn == synoptic:
         print(f"already latest hourly {hourly} synoptic {synoptic}", flush=True)
+        print("COOK_STATUS=noop", flush=True)
         return
     if not args.leads and not args.force and old_syn == synoptic:
         targets = [h for h in targets if h <= 48]
@@ -537,6 +538,7 @@ def main() -> None:
 
     assert done_hours, "no frames"
     print(f"manifest {args.out / 'manifest.json'}  n={len(done_hours)}  {time.time() - t0:.0f}s")
+    print("COOK_STATUS=updated", flush=True)
 
 
 if __name__ == "__main__":

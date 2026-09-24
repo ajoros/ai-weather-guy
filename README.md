@@ -33,7 +33,7 @@ Upper-air fields (500 mb height, 850 mb temperature, jet, precipitable water), e
 
 Google runs WeatherNext 3 and publishes summary statistics. We pull the newest available run, draw a fixed set of regional maps with standard meteorological color scales, and post that snapshot to the live page. The browser only flips those maps in time — it does not run the model.
 
-Updates happen when a new snapshot is published. If the loop looks stale, it has not been refreshed yet.
+The live page checks for a newer Google run about twice an hour and republishes when one is in. If the loop looks stale, a refresh has not finished yet.
 
 ## License / terms
 
