@@ -635,6 +635,7 @@ def add_watermark(ax) -> None:
 
 def finish_map(fig, ax, mappable, pal, path: Path) -> None:
     # ponytail: default colorbar fraction=0.15 leaves a fat white strip on an 18" fig.
+    add_watermark(ax)
     ticks = pal.get("ticks", pal["bounds"])
     fig.colorbar(
         mappable,
@@ -742,7 +743,6 @@ def save_map(
     ax.set_xlabel("longitude (0–360)", fontsize=8)
     ax.set_ylabel("latitude", fontsize=8)
     ax.set_title(title, loc="left", fontsize=11)
-    add_watermark(ax)
     finish_map(fig, ax, pcm, pal, path)
 
 

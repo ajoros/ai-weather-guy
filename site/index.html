@@ -100,14 +100,6 @@
       width: 100%; height: 100%; object-fit: contain;
       background: #fff; display: block;
     }
-    .wm {
-      position: absolute; left: 50%; bottom: 10.5%;
-      transform: translateX(-50%);
-      white-space: nowrap;
-      text-align: center; font-size: 12px; font-weight: 500;
-      color: #141414; pointer-events: none;
-      text-shadow: 0 0 4px #fff, 0 0 4px #fff, 0 1px 0 #fff;
-    }
     figcaption { margin: 8px 2px 0; }
     .cap-title { font-size: 14px; font-weight: 550; color: #0b0c10; }
     .cap-sub { font-size: 12px; color: #5f6368; margin-top: 2px; }
@@ -132,7 +124,6 @@
       object-fit: contain;
       background: #fff; display: block;
     }
-    #lightbox .wm { bottom: 12%; }
     #lightbox .lb-bar {
       display: flex; align-items: center; gap: 8px;
       flex-shrink: 0;
@@ -143,7 +134,6 @@
     #lightbox .lb-cap { flex: 1; color: #0b0c10; font-size: 13px; }
     @media (max-width: 900px) {
       .maps { grid-template-columns: 1fr; padding: 16px; }
-      .wm { font-size: 10px; }
       header { padding: 10px 16px; }
       .top { flex-wrap: wrap; }
       .when { flex: 1 1 100%; text-align: left; order: 3; }
@@ -196,7 +186,6 @@
   <div id="lightbox">
     <div class="sheet">
       <img id="lb-img" alt="" />
-      <div class="wm">AI-Weather-Guy · ajoros · ajoros.github.io/ai-weather-guy · Google WeatherNext 3 (experimental)</div>
     </div>
     <div class="lb-bar">
       <button type="button" id="lb-prev">←</button>
@@ -380,13 +369,9 @@
         const img = document.createElement("img");
         img.id = "img-" + v.id;
         img.alt = captionParts(v).title;
-        const wm = document.createElement("div");
-        wm.className = "wm";
-        wm.textContent = "AI-Weather-Guy · ajoros · ajoros.github.io/ai-weather-guy · Google WeatherNext 3 (experimental)";
         const cap = document.createElement("figcaption");
         fillCaption(cap, v);
         wrap.appendChild(img);
-        wrap.appendChild(wm);
         fig.appendChild(wrap);
         fig.appendChild(cap);
         fig.addEventListener("click", () => openLightbox(v.id));
