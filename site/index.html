@@ -26,6 +26,8 @@
       display: flex; justify-content: space-between; align-items: flex-start;
       gap: 16px; width: 100%;
     }
+    .brand-left { display: flex; align-items: center; gap: 12px; min-width: 0; }
+    .logo { width: 44px; height: 44px; display: block; flex-shrink: 0; }
     h1 { font-size: 22px; margin: 0; font-weight: 700; letter-spacing: -0.03em; }
     .byline { margin-top: 4px; font-size: 13px; color: #5f6368; }
     .byline a { color: #3d5afe; text-decoration: none; }
@@ -122,12 +124,15 @@
 <body>
   <header>
     <div class="brand">
-      <div>
-        <h1>AI-Weather-Guy</h1>
-        <div class="byline">
-          <a href="https://github.com/ajoros">ajoros</a>
-          ·
-          <a href="https://ajoros.github.io/ai-weather-guy/">ajoros.github.io/ai-weather-guy</a>
+      <div class="brand-left">
+        <img class="logo" src="logo-mark.png" width="44" height="44" alt="" />
+        <div>
+          <h1>AI-Weather-Guy</h1>
+          <div class="byline">
+            <a href="https://github.com/ajoros">ajoros</a>
+            ·
+            <a href="https://ajoros.github.io/ai-weather-guy/">ajoros.github.io/ai-weather-guy</a>
+          </div>
         </div>
       </div>
       <div class="wn3-box">

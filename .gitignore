@@ -14,6 +14,7 @@ previews/
 # One-off plot dumps
 plots/
 *.png
+!site/logo-mark.png
 *.mp4
 *.gif
 

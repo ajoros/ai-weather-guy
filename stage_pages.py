@@ -15,6 +15,7 @@ from PIL import Image
 def stage(site: Path, dest: Path) -> int:
     dest.mkdir(parents=True, exist_ok=True)
     shutil.copy2(site / "index.html", dest / "index.html")
+    shutil.copy2(site / "logo-mark.png", dest / "logo-mark.png")
     (dest / ".nojekyll").write_text("", encoding="utf-8")
     m = json.loads((site / "manifest.json").read_text(encoding="utf-8"))
     keep = {v["id"] for v in m.get("variables") or []}
