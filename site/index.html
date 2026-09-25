@@ -47,17 +47,18 @@
     .why-pop {
       display: none;
       position: absolute; top: calc(100% + 8px); right: 0;
-      width: min(420px, calc(100vw - 40px));
+      width: min(480px, calc(100vw - 40px));
       text-align: left;
       background: #fff; color: #3c4043;
       border: 1px solid #e6e8ef; border-radius: 12px;
-      padding: 14px 16px;
-      font-size: 13px; font-weight: 400; line-height: 1.45;
+      padding: 16px 18px;
+      font-size: 13px; font-weight: 400; line-height: 1.5;
       box-shadow: 0 12px 32px #1a237e1f;
       z-index: 30;
     }
+    .why-pop h2 { margin: 0 0 8px; font-size: 15px; font-weight: 650; color: #0b0c10; letter-spacing: -0.02em; }
     .why-pop p { margin: 0; }
-    .why-pop .more { margin-top: 10px; }
+    .why-pop p + p { margin-top: 10px; }
     .why-pop a { color: #3d5afe; }
     .wn3-box:hover .why-pop,
     .wn3-box:focus-within .why-pop,
@@ -168,8 +169,13 @@
         <div class="wn3-sub">Google data · experimental</div>
         <button type="button" class="why" id="why" aria-expanded="false" aria-controls="why-pop">Why WeatherNext 3</button>
         <div class="why-pop" id="why-pop">
-          <p>WeatherNext 3 is Google DeepMind’s AI weather model, the same family now in Search, Maps, and Gemini. GFS and the ECMWF Euro solve physics equations on a supercomputer; a global run can take an hour. WeatherNext 3 learned weather from decades of analyses and satellite data, then writes a new forecast in seconds, every hour. It is an ensemble — many slightly different futures, averaged here into the most likely map — with surface detail down to about 5 km. Faster and, in Google’s tests, sharper than those legacy models. Still experimental research, not an official warning.</p>
-          <p class="more"><a href="https://deepmind.google/science/weathernext" target="_blank" rel="noopener">DeepMind overview</a></p>
+          <h2>Why WeatherNext 3</h2>
+          <p>WeatherNext 3 is Google DeepMind’s most advanced global weather AI — the same model family now behind forecasts in Search, Maps, and Gemini.</p>
+          <p>For decades the workhorses have been physics models: the American GFS, Europe’s ECMWF, and their cousins. They march the atmosphere forward by solving equations on a supercomputer. That science is remarkable, and it is also slow. A single global run can take an hour, so those centers typically refresh only a few times a day.</p>
+          <p>WeatherNext 3 learned the weather instead. Trained on decades of analyses and, in this generation, raw satellite imagery, it can draw a new global forecast in seconds — every hour, around the clock. You get a tighter watch on rain, wind, and temperature as they change, not a snapshot that is already six hours old.</p>
+          <p>It is also an ensemble: dozens of slightly different futures from the same start. This page shows the mean of those members, so the map is the most likely pattern, not one noisy roll of the dice. Surface fields, including station-scale temperature, are produced at about 5&nbsp;km; winds and other surfaces at about 10&nbsp;km.</p>
+          <p>In Google’s tests that mix of speed, hourly updates, and ensemble detail is competitive with — and on many scores ahead of — those legacy systems. It is still experimental research. Use it with GFS and the Euro, not instead of a National Weather Service watch or warning.</p>
+          <p><a href="https://deepmind.google/science/weathernext" target="_blank" rel="noopener">DeepMind overview</a></p>
         </div>
       </div>
     </div>
