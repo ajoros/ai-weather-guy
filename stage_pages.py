@@ -17,8 +17,11 @@ def stage(site: Path, dest: Path) -> int:
     shutil.copy2(site / "index.html", dest / "index.html")
     (dest / ".nojekyll").write_text("", encoding="utf-8")
     m = json.loads((site / "manifest.json").read_text(encoding="utf-8"))
+    keep = {v["id"] for v in m.get("variables") or []}
     for fr in m.get("frames", []):
         files = fr.get("files") or {}
+        if keep:
+            files = {k: v for k, v in files.items() if k in keep}
         fr["files"] = {
             k: (v[:-4] + ".jpg" if isinstance(v, str) and v.endswith(".png") else v)
             for k, v in files.items()
@@ -26,15 +29,17 @@ def stage(site: Path, dest: Path) -> int:
     (dest / "manifest.json").write_text(json.dumps(m, indent=2) + "\n", encoding="utf-8")
 
     jobs = []
-    for png in site.glob("frames/*/*.png"):
-        jpg = dest / png.relative_to(site).with_suffix(".jpg")
-        jpg.parent.mkdir(parents=True, exist_ok=True)
-        jobs.append((png, jpg))
+    folders = [site / "frames" / fid for fid in keep] if keep else list((site / "frames").glob("*"))
+    for folder in folders:
+        for png in folder.glob("f[0-9][0-9][0-9].png"):
+            jpg = dest / png.relative_to(site).with_suffix(".jpg")
+            jpg.parent.mkdir(parents=True, exist_ok=True)
+            jobs.append((png, jpg))
 
     def convert(pair: tuple[Path, Path]) -> None:
         src, jpg = pair
         with Image.open(src) as im:
-            im.convert("RGB").save(jpg, "JPEG", quality=80, optimize=True)
+            im.convert("RGB").save(jpg, "JPEG", quality=85, optimize=True)
 
     with ThreadPoolExecutor(max_workers=8) as pool:
         list(pool.map(convert, jobs))

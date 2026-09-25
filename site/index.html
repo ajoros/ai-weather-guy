@@ -3,66 +3,146 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>WeatherNext 3 — free fields</title>
+  <title>AI-Weather-Guy — WeatherNext 3</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700&display=swap" rel="stylesheet" />
   <style>
-    :root { color-scheme: dark; }
+    :root { color-scheme: light; }
     body {
       margin: 0;
-      font-family: ui-sans-serif, system-ui, sans-serif;
-      background: #111418;
-      color: #e8eaed;
+      font-family: "DM Sans", ui-sans-serif, system-ui, sans-serif;
+      background: #f4f6fb;
+      color: #0b0c10;
     }
     header {
-      position: sticky; top: 0; z-index: 5;
-      background: #111418ee;
-      backdrop-filter: blur(8px);
-      padding: 10px 16px 8px;
-      border-bottom: 1px solid #2a2f36;
+      position: sticky; top: 0; z-index: 25;
+      background: #fffffff2;
+      backdrop-filter: blur(16px);
+      padding: 14px 28px 12px;
+      border-bottom: 1px solid #e6e8ef;
     }
-    h1 { font-size: 16px; margin: 0 0 4px; font-weight: 650; }
-    .meta, .hint { color: #9aa0a6; font-size: 13px; }
-    .clock { font-size: 18px; font-weight: 650; margin: 6px 0 2px; }
+    .brand {
+      display: flex; justify-content: space-between; align-items: flex-start;
+      gap: 16px; width: 100%;
+    }
+    h1 { font-size: 22px; margin: 0; font-weight: 700; letter-spacing: -0.03em; }
+    .byline { margin-top: 4px; font-size: 13px; color: #5f6368; }
+    .byline a { color: #3d5afe; text-decoration: none; }
+    .byline a:hover { text-decoration: underline; }
+    .wn3-box { margin-left: auto; text-align: right; flex-shrink: 0; }
+    .wn3 { font-size: 13px; font-weight: 650; color: #0b0c10; }
+    .wn3-sub { margin-top: 2px; font-size: 12px; color: #5f6368; }
+    .meta, .hint { color: #5f6368; font-size: 13px; max-width: 1180px; }
+    .clock { font-size: 22px; font-weight: 650; letter-spacing: -0.02em; margin: 14px 0 4px; }
     .banner {
-      background: #3c2a12; color: #fdd663; font-size: 12px;
-      padding: 6px 10px; border-radius: 6px; margin-top: 8px; max-width: 1100px;
+      background: #eef2ff; color: #1a237e; font-size: 12px;
+      padding: 8px 14px; border-radius: 999px; margin-top: 10px; max-width: 1180px;
     }
     .controls {
       display: flex; align-items: center; gap: 10px;
-      margin-top: 8px; max-width: 1100px;
+      margin-top: 12px; max-width: 1180px;
     }
     button {
-      background: #2a2f36; color: #e8eaed; border: 1px solid #3c434d;
-      border-radius: 6px; padding: 6px 10px; cursor: pointer;
+      background: #fff; color: #0b0c10; border: 1px solid #dadce0;
+      border-radius: 999px; padding: 7px 14px; cursor: pointer; font: inherit;
     }
-    input[type=range] { flex: 1; }
+    button:hover { background: #eef2ff; border-color: #c5cae9; }
+    #play, #now, #lb-play { background: #0b0c10; color: #fff; border-color: #0b0c10; }
+    #play:hover, #now:hover, #lb-play:hover { background: #3d5afe; border-color: #3d5afe; }
+    input[type=range] { flex: 1; accent-color: #3d5afe; }
+    #lead { font-size: 13px; color: #5f6368; min-width: 3.2em; }
     .maps {
       display: grid;
       grid-template-columns: 1fr 1fr;
-      gap: 10px;
-      padding: 12px 16px 40px;
+      gap: 18px;
+      padding: 22px 28px 56px;
     }
-    .toggles { margin-top: 8px; font-size: 13px; color: #9aa0a6; }
+    .toggles { margin-top: 10px; font-size: 13px; color: #5f6368; }
     .toggles label { cursor: pointer; }
-    figure { margin: 0; }
-    figure img {
-      width: 100%; background: #fff; border-radius: 6px; display: block;
+    figure { margin: 0; cursor: pointer; }
+    .map-wrap {
+      position: relative;
+      aspect-ratio: 21 / 10;
+      background: #fff;
+      border-radius: 16px;
+      overflow: hidden;
+      box-shadow: 0 8px 28px #1a237e14;
     }
-    figcaption { font-size: 12px; color: #9aa0a6; margin: 4px 0 0; }
-    .miss { color: #f28b82; padding: 24px; }
-    .err { color: #f28b82; padding: 18px; }
-    @media (max-width: 900px) { .maps { grid-template-columns: 1fr; } }
+    figure img {
+      width: 100%; height: 100%; object-fit: contain;
+      background: #fff; display: block;
+    }
+    .wm {
+      position: absolute; left: 50%; bottom: 10.5%;
+      transform: translateX(-50%);
+      white-space: nowrap;
+      text-align: center; font-size: 12px; font-weight: 500;
+      color: #141414; pointer-events: none;
+      text-shadow: 0 0 4px #fff, 0 0 4px #fff, 0 1px 0 #fff;
+    }
+    figcaption { font-size: 13px; color: #5f6368; margin: 8px 2px 0; }
+    .miss { color: #b3261e; padding: 24px; }
+    .err { color: #b3261e; padding: 18px; }
+    body.lb-open { overflow: hidden; }
+    #lightbox {
+      display: none;
+      position: fixed; inset: 0; z-index: 40;
+      background: #f4f6fb;
+      flex-direction: column;
+      box-sizing: border-box;
+    }
+    #lightbox.open { display: flex; }
+    #lightbox .sheet {
+      flex: 1; min-height: 0; width: 100%;
+      display: flex; align-items: center; justify-content: center;
+      position: relative;
+    }
+    #lightbox img {
+      width: 100%; height: 100%;
+      object-fit: contain;
+      background: #fff; display: block;
+    }
+    #lightbox .wm { bottom: 12%; }
+    #lightbox .lb-bar {
+      display: flex; align-items: center; gap: 8px;
+      flex-shrink: 0;
+      padding: 10px 16px;
+      background: #fff;
+      border-top: 1px solid #e6e8ef;
+    }
+    #lightbox .lb-cap { flex: 1; color: #0b0c10; font-size: 13px; }
+    @media (max-width: 900px) {
+      .maps { grid-template-columns: 1fr; padding: 16px; }
+      .wm { font-size: 10px; }
+      header { padding: 12px 16px 10px; }
+    }
   </style>
 </head>
 <body>
   <header>
-    <h1>WeatherNext 3 — free stats, NA + North Pacific</h1>
-    <div class="meta" id="meta">Loading manifest…</div>
+    <div class="brand">
+      <div>
+        <h1>AI-Weather-Guy</h1>
+        <div class="byline">
+          <a href="https://github.com/ajoros">ajoros</a>
+          ·
+          <a href="https://ajoros.github.io/ai-weather-guy/">ajoros.github.io/ai-weather-guy</a>
+        </div>
+      </div>
+      <div class="wn3-box">
+        <div class="wn3">WeatherNext 3</div>
+        <div class="wn3-sub">Google data · experimental</div>
+      </div>
+    </div>
     <div class="clock" id="clock"></div>
-    <div class="hint" id="hint">← → step time · space play · Home / End</div>
+    <div class="meta" id="meta">Loading manifest…</div>
+    <div class="hint" id="hint">Move the slider or press Play. Click a map to enlarge.</div>
     <div class="controls">
       <button id="prev" type="button">←</button>
       <button id="play" type="button">Play</button>
       <button id="next" type="button">→</button>
+      <button id="now" type="button">Now</button>
       <input id="slider" type="range" min="0" max="0" value="0" />
       <span id="lead">F+000</span>
     </div>
@@ -72,12 +152,93 @@
     <div class="banner" id="banner"></div>
   </header>
   <div class="maps" id="maps"></div>
+  <div id="lightbox">
+    <div class="sheet">
+      <img id="lb-img" alt="" />
+      <div class="wm">AI-Weather-Guy · ajoros · ajoros.github.io/ai-weather-guy · Google WeatherNext 3 (experimental)</div>
+    </div>
+    <div class="lb-bar">
+      <button type="button" id="lb-prev">←</button>
+      <button type="button" id="lb-play">Play</button>
+      <button type="button" id="lb-next">→</button>
+      <div class="lb-cap" id="lb-cap"></div>
+      <button type="button" id="lb-x" aria-label="Close">×</button>
+    </div>
+  </div>
   <script>
     const $ = (id) => document.getElementById(id);
     const CLOUD_LAYERS = new Set(["cloud_low", "cloud_mid", "cloud_high"]);
+    const UPPER_IDS = new Set(["h500", "t850", "wind925", "wind700", "wind500", "wind300"]);
     let manifest = null;
     let i = 0;
     let timer = null;
+    let openId = null;
+
+    function ptParts(d, extra) {
+      const parts = new Intl.DateTimeFormat("en-US", Object.assign({
+        timeZone: "America/Los_Angeles",
+        hour: "numeric",
+        hour12: true,
+        timeZoneName: "short",
+      }, extra || {})).formatToParts(d);
+      const pick = (t) => (parts.find((p) => p.type === t) || {}).value || "";
+      const ap = pick("dayPeriod").toLowerCase().replace(/\./g, "");
+      return { h: pick("hour"), ap, tz: pick("timeZoneName"), pick };
+    }
+
+    function fmtWhen(iso) {
+      const d = new Date(iso);
+      if (Number.isNaN(d.getTime())) return iso;
+      const pt = ptParts(d, { weekday: "long", month: "short", day: "numeric" });
+      return pt.pick("weekday") + ", " + pt.pick("month") + " " + pt.pick("day") +
+        " · " + pt.h + pt.ap + " " + pt.tz;
+    }
+
+    function fmtInitShort(iso) {
+      const d = new Date(iso);
+      if (Number.isNaN(d.getTime())) return iso;
+      const pt = ptParts(d);
+      return pt.h + pt.ap + " " + pt.tz;
+    }
+
+    function hoursAhead(lead) {
+      return lead === 1 ? "1 hour ahead" : lead + " hours ahead";
+    }
+
+    function closestNowIndex(frames) {
+      const now = Date.now();
+      let best = 0;
+      let bestAbs = Infinity;
+      frames.forEach((fr, idx) => {
+        const t = new Date(fr.valid).getTime();
+        if (Number.isNaN(t)) return;
+        const d = Math.abs(t - now);
+        if (d < bestAbs) {
+          bestAbs = d;
+          best = idx;
+        }
+      });
+      return best;
+    }
+
+    function goNow() {
+      if (!manifest || !manifest.frames.length) return;
+      i = closestNowIndex(manifest.frames);
+      show();
+    }
+
+    function closeLightbox() {
+      openId = null;
+      $("lightbox").classList.remove("open");
+      document.body.classList.remove("lb-open");
+    }
+
+    function openLightbox(id) {
+      openId = id;
+      $("lightbox").classList.add("open");
+      document.body.classList.add("lb-open");
+      show();
+    }
 
     function visibleVars() {
       const av = $("aviation") && $("aviation").checked;
@@ -85,15 +246,10 @@
     }
 
     function setMeta() {
-      const vis = visibleVars();
-      const hourly = manifest.hourly_init || manifest.init;
-      const syn = manifest.synoptic_init || manifest.init;
-      const mix = hourly && syn && hourly !== syn
-        ? "F+1–48 " + hourly + " hourly   ·   F+54–360 " + syn + " synoptic"
-        : (hourly || manifest.run);
-      $("meta").textContent =
-        mix + "   ·   " + manifest.frames.length + " times   ·   " +
-        vis.length + " maps   ·   stats mean   ·   10–75N  120E–60W";
+      const cloudBox = $("aviation") && $("aviation").closest(".toggles");
+      const hasCloud = manifest.variables.some((v) => CLOUD_LAYERS.has(v.id));
+      if (cloudBox) cloudBox.hidden = !hasCloud;
+      if (!hasCloud && $("aviation")) $("aviation").checked = false;
     }
 
     function buildFigures() {
@@ -105,38 +261,91 @@
       }
       visibleVars().forEach((v) => {
         const fig = document.createElement("figure");
+        const wrap = document.createElement("div");
+        wrap.className = "map-wrap";
         const img = document.createElement("img");
         img.id = "img-" + v.id;
         img.alt = v.label;
+        const wm = document.createElement("div");
+        wm.className = "wm";
+        wm.textContent = "AI-Weather-Guy · ajoros · ajoros.github.io/ai-weather-guy · Google WeatherNext 3 (experimental)";
         const cap = document.createElement("figcaption");
         cap.textContent = v.label + (v.units ? " (" + v.units + ")" : "");
-        fig.appendChild(img);
+        wrap.appendChild(img);
+        wrap.appendChild(wm);
+        fig.appendChild(wrap);
         fig.appendChild(cap);
+        fig.addEventListener("click", () => openLightbox(v.id));
         box.appendChild(fig);
       });
+      if (openId && !visibleVars().some((v) => v.id === openId)) closeLightbox();
       show();
     }
 
+    function ensembleLead(lead) {
+      return lead < 6 ? 6 : Math.floor(lead / 6) * 6;
+    }
+
+    function frameForVar(fr, id) {
+      if (!UPPER_IDS.has(id) || (fr.files && fr.files[id])) return fr;
+      const want = ensembleLead(fr.lead);
+      return manifest.frames.find((f) => f.lead === want) || fr;
+    }
+
     function frameSrc(fr, id) {
-      const src = (fr.files && fr.files[id]) || "";
+      const use = frameForVar(fr, id);
+      const src = (use.files && use.files[id]) || "";
       if (!src) return "";
-      return src + "?t=" + encodeURIComponent(fr.init || manifest.init || "");
+      const t = (use.init || fr.init || manifest.init || "") + "-" + (manifest.generated || "");
+      return src + "?t=" + encodeURIComponent(t);
     }
 
     function show() {
       const fr = manifest.frames[i];
       const init = fr.init || manifest.init;
-      const kind = fr.lead <= 48 ? "hourly" : "synoptic";
-      $("lead").textContent = "F+" + String(fr.lead).padStart(3, "0");
-      $("clock").textContent =
-        "Valid " + fr.valid + "   ·   F+" + fr.lead + " h   ·   init " + init + " " + kind;
+      $("lead").textContent = "+" + fr.lead + "h";
+      const when = fmtWhen(fr.valid);
+      $("clock").textContent = when;
+      $("meta").textContent = hoursAhead(fr.lead) + " · forecast started " + fmtInitShort(init);
       $("slider").value = String(i);
       for (const v of visibleVars()) {
         const img = $("img-" + v.id);
         if (!img) continue;
+        const use = frameForVar(fr, v.id);
         const src = frameSrc(fr, v.id);
-        if (src) img.src = src;
-        else img.removeAttribute("src");
+        const fig = img.closest("figure");
+        const cap = fig && fig.querySelector("figcaption");
+        const base = v.label + (v.units ? " (" + v.units + ")" : "");
+        const off = UPPER_IDS.has(v.id) && use && use.lead !== fr.lead;
+        if (src) {
+          if (fig) fig.hidden = false;
+          img.src = src;
+          if (cap) cap.textContent = off ? base + " · " + hoursAhead(use.lead) : base;
+        } else if (UPPER_IDS.has(v.id)) {
+          if (fig) fig.hidden = false;
+          img.removeAttribute("src");
+          if (cap) cap.textContent = base;
+        } else {
+          img.removeAttribute("src");
+          if (fig) fig.hidden = true;
+        }
+      }
+      if (openId) {
+        const spec = visibleVars().find((v) => v.id === openId);
+        const use = frameForVar(fr, openId);
+        const src = frameSrc(fr, openId);
+        const lb = $("lb-img");
+        if (!src) {
+          closeLightbox();
+        } else {
+          lb.src = src;
+          lb.alt = spec ? spec.label : openId;
+          const off = UPPER_IDS.has(openId) && use && use.lead !== fr.lead;
+          $("lb-cap").textContent =
+            (spec ? spec.label + (spec.units ? " (" + spec.units + ")" : "") : openId) +
+            (off ? " · " + hoursAhead(use.lead) : "") +
+            " · " + when;
+        }
       }
       preload(i - 1);
       preload(i + 1);
@@ -162,11 +371,12 @@
       if (timer) {
         clearInterval(timer);
         timer = null;
-        $("play").textContent = "Play";
-        return;
+      } else {
+        timer = setInterval(() => step(1), 400);
       }
-      $("play").textContent = "Pause";
-      timer = setInterval(() => step(1), 400);
+      const label = timer ? "Pause" : "Play";
+      $("play").textContent = label;
+      $("lb-play").textContent = label;
     }
 
     $("slider").addEventListener("input", (e) => {
@@ -176,14 +386,25 @@
     $("prev").addEventListener("click", () => step(-1));
     $("next").addEventListener("click", () => step(1));
     $("play").addEventListener("click", togglePlay);
+    $("now").addEventListener("click", goNow);
     $("aviation").addEventListener("change", () => {
       setMeta();
       buildFigures();
     });
+    $("lb-prev").addEventListener("click", () => step(-1));
+    $("lb-next").addEventListener("click", () => step(1));
+    $("lb-play").addEventListener("click", togglePlay);
+    $("lb-x").addEventListener("click", closeLightbox);
     document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape" && openId) {
+        e.preventDefault();
+        closeLightbox();
+        return;
+      }
       if (e.key === "ArrowLeft" || e.key === ",") { e.preventDefault(); step(-1); }
       if (e.key === "ArrowRight" || e.key === ".") { e.preventDefault(); step(1); }
       if (e.key === " ") { e.preventDefault(); togglePlay(); }
+      if (e.key === "n" || e.key === "N") { e.preventDefault(); goNow(); }
       if (e.key === "Home") { e.preventDefault(); i = 0; show(); }
       if (e.key === "End") {
         e.preventDefault();
@@ -200,8 +421,8 @@
       .then((m) => {
         manifest = m;
         $("banner").textContent = m.disclaimer || "";
-        if (m.keys) $("hint").textContent = m.keys;
         $("slider").max = String(Math.max(0, m.frames.length - 1));
+        i = closestNowIndex(m.frames);
         setMeta();
         buildFigures();
         setInterval(() => {

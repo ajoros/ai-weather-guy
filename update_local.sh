@@ -9,7 +9,9 @@ mkdir -p "$ROOT/.cache"
 LOG="$ROOT/.cache/cook-latest.log"
 {
   echo "==== $(date -u +%Y-%m-%dT%H:%M:%SZ) ===="
-  "$ROOT/.venv/bin/python" "$ROOT/cook_ee.py" --workers 8
+  "$ROOT/.venv/bin/python" "$ROOT/cook_ee.py" --workers 8 --fields core
+  echo "==== ensemble $(date -u +%Y-%m-%dT%H:%M:%SZ) ===="
+  "$ROOT/run_ensemble_vm.sh"
 } > "$LOG" 2>&1 || {
   cat "$LOG" >&2
   exit 1

@@ -42,14 +42,21 @@ from cook import (
     LON1,
     PALETTES,
     SITE,
+    accum_hours,
     display_leads,
+    finish_map,
+    merge_manifest,
     parse_fields,
-    write_manifest,
+    plot_title,
 )
 
 COL_01 = "projects/gcp-public-data-weathernext/assets/weathernext_3_0_0_0p1deg"
 COL_05 = "projects/gcp-public-data-weathernext/assets/weathernext_3_0_0_0p05deg"
-THUMB_W, THUMB_H = 1400, 506
+THUMB_W, THUMB_H = 2100, 759
+FIG_IN = (18.0, 8.52)
+FIG_DPI = 130
+# bbox-tight maps land ~2100px; reject only the tiny error thumbs.
+MIN_PNG_W = 1800
 
 CONV = {
     "k_to_f": lambda img: img.multiply(1.8).subtract(459.67),
@@ -69,6 +76,7 @@ CONV_FOR = {
     "experimental_tp_1hr_mean": "m_to_in",
     "mean_sea_level_pressure_mean": "pa_to_hpa",
     "wind_speed_10m_mean": "ms_to_mph",
+    "wind_speed_10m_p90": "ms_to_mph",
     "sea_surface_temperature_mean": "k_to_f",
     "total_cloud_cover_mean": "frac_to_pct",
     "low_cloud_cover_mean": "frac_to_pct",
@@ -95,6 +103,12 @@ def iso_init(dt: datetime) -> str:
 def start_for_lead(lead: int, hourly: str, synoptic: str) -> str:
     """F+1–48 from the newest init (often an interim hourly). Day 3–15 from synoptic."""
     return hourly if lead <= 48 else synoptic
+
+
+def synoptic_frames_current(old: dict, synoptic: str) -> bool:
+    """True only if day-3–15 frames exist and already match this synoptic init."""
+    late = [fr for fr in old.get("frames", []) if fr.get("lead", 0) > 48]
+    return bool(late) and all(fr.get("init") == synoptic for fr in late)
 
 
 def has_forecast(col: ee.ImageCollection, start: str, hour: int) -> bool:
@@ -182,14 +196,30 @@ def thumb_params() -> dict:
     }
 
 
-def field_image(start: str, hour: int, spec: tuple) -> ee.Image:
+def field_scalar(start: str, hour: int, spec: tuple) -> ee.Image:
+    """Converted field (plot units). Used for cook thumbs and click-to-sample."""
     _fid, _label, var, _conv, pal, grid, accum = spec
     col_id = COL_05 if grid == "0p05" else COL_01
     col = ee.ImageCollection(col_id).filter(ee.Filter.eq("start_time", start))
-    hours = list(range(max(1, hour - max(accum, 1) + 1), hour + 1)) if accum else [hour]
-    ic = col.filter(ee.Filter.inList("forecast_hour", hours)).select(var)
-    img = ic.sum() if accum > 1 else ic.first()
-    img = CONV[CONV_FOR[var]](img)
+    if accum < 0:
+        # ponytail: one EE sum over 1..hour, not a Python loop of 360 images.
+        # Ceiling: synoptic 6-h frames still sum whatever hourly steps exist for this init.
+        ic = (
+            col.filter(ee.Filter.gte("forecast_hour", 1))
+            .filter(ee.Filter.lte("forecast_hour", hour))
+            .select(var)
+        )
+        img = ic.sum()
+    else:
+        hours = accum_hours(hour, accum)
+        ic = col.filter(ee.Filter.inList("forecast_hour", hours)).select(var)
+        img = ic.sum() if accum > 1 else ic.first()
+    return CONV[CONV_FOR[var]](img)
+
+
+def field_image(start: str, hour: int, spec: tuple) -> ee.Image:
+    _fid, _label, var, _conv, pal, grid, accum = spec
+    img = field_scalar(start, hour, spec)
     rgb = classify(img, PALETTES[pal]["bounds"]).visualize(
         min=0,
         max=len(PALETTES[pal]["colors"]) - 1,
@@ -244,7 +274,7 @@ def wrap_thumb(
 ) -> None:
     pal = PALETTES[palette]
     arr = plt.imread(raw)
-    fig, ax = plt.subplots(figsize=(13.5, 6.4), dpi=110)
+    fig, ax = plt.subplots(figsize=FIG_IN, dpi=FIG_DPI)
     ax.imshow(arr, extent=[LON0, LON1, LAT0, LAT1], origin="upper", aspect="auto")
     if contours is not None:
         lon, lat, z = contours
@@ -278,19 +308,17 @@ def wrap_thumb(
     cmap = mcolors.ListedColormap(list(pal["colors"]))
     norm = mcolors.BoundaryNorm(pal["bounds"], cmap.N)
     sm = plt.cm.ScalarMappable(cmap=cmap, norm=norm)
-    fig.colorbar(
-        sm,
-        ax=ax,
-        shrink=0.78,
-        label=pal["label"],
-        pad=0.015,
-        ticks=pal.get("ticks", pal["bounds"]),
-        extend="both",
-    )
-    fig.tight_layout()
-    dest.parent.mkdir(parents=True, exist_ok=True)
-    fig.savefig(dest, facecolor="white")
-    plt.close(fig)
+    finish_map(fig, ax, sm, pal, dest)
+
+
+def png_wide_enough(dest: Path) -> bool:
+    try:
+        from PIL import Image
+
+        with Image.open(dest) as im:
+            return im.size[0] >= MIN_PNG_W
+    except Exception:
+        return False
 
 
 def fetch_one(start: str, hour: int, spec: tuple, dest: Path, force: bool) -> str:
@@ -303,13 +331,12 @@ def fetch_one(start: str, hour: int, spec: tuple, dest: Path, force: bool) -> st
         and not force
         and stamp.exists()
         and stamp.read_text().strip() == start
+        and png_wide_enough(dest)
     ):
         return f"skip {fid} f{hour:03d}"
     extra = f"  ({hour}h window)" if accum == 6 and hour < 6 else ""
-    valid = (
-        datetime.fromisoformat(start.replace("Z", "+00:00")) + timedelta(hours=hour)
-    ).strftime("%Y-%m-%dT%H:%M:%SZ")
-    raw = dest.with_suffix(".ee.png")
+    valid_dt = datetime.fromisoformat(start.replace("Z", "+00:00")) + timedelta(hours=hour)
+    raw = dest.with_name(f"{dest.stem}.{os.getpid()}.ee.png")
     dest.parent.mkdir(parents=True, exist_ok=True)
     last: Exception | None = None
     for n in range(6):
@@ -364,14 +391,14 @@ def fetch_one(start: str, hour: int, spec: tuple, dest: Path, force: bool) -> st
         print(f"  overlay skip {fid} f{hour:03d}: {overlay_err}", flush=True)
     if fid == "qpf6_imerg_p90":
         note = "  (sum of 1-h p90)"
-    elif fid == "wind10":
-        note = " + barbs (kt)"
+    elif fid in ("wind10", "wind10_p90"):
+        note = " + barbs (kt)" if fid == "wind10" else "  (gust proxy)"
     else:
         note = extra
     wrap_thumb(
         raw,
         dest,
-        f"{label}{note}   WN3 mean   valid {valid}   F+{hour:03d}",
+        plot_title(label, note, valid_dt, start, hour),
         pal,
         contours=contours,
         barbs=barbs,
@@ -383,51 +410,6 @@ def fetch_one(start: str, hour: int, spec: tuple, dest: Path, force: bool) -> st
     return f"ok {fid} f{hour:03d}"
 
 
-def merge_manifest(
-    out: Path,
-    *,
-    run: str,
-    init: str,
-    source: str,
-    new_ids: list[str],
-    done_hours: dict[int, dict],
-    extra: dict | None = None,
-) -> list[dict]:
-    path = out / "manifest.json"
-    old = json.loads(path.read_text()) if path.exists() else {"variables": [], "frames": []}
-    ids = [v["id"] for v in old.get("variables", [])]
-    for fid in new_ids:
-        if fid in ids:
-            continue
-        if fid == "qpf6_imerg_p90" and "qpf6_imerg" in ids:
-            ids.insert(ids.index("qpf6_imerg") + 1, fid)
-        else:
-            ids.append(fid)
-    by_lead = {fr["lead"]: fr for fr in old.get("frames", [])}
-    for hour, fr in done_hours.items():
-        cur = by_lead.get(hour, {"lead": hour, "valid": fr["valid"], "files": {}})
-        cur["valid"] = fr["valid"]
-        if fr.get("init"):
-            cur["init"] = fr["init"]
-        cur["files"].update(fr["files"])
-        by_lead[hour] = cur
-    if extra and extra.get("synoptic_init"):
-        for h, fr in by_lead.items():
-            if "init" not in fr and h > 48:
-                fr["init"] = extra["synoptic_init"]
-    frames = [by_lead[h] for h in display_leads() if h in by_lead]
-    write_manifest(
-        out,
-        run=run,
-        init=init,
-        source=source,
-        field_ids=ids,
-        frames=frames,
-        extra=extra,
-    )
-    return frames
-
-
 def parse_args() -> argparse.Namespace:
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument(
@@ -435,7 +417,7 @@ def parse_args() -> argparse.Namespace:
         default="",
         help="ISO init UTC; default = latest hourly for F+1–48 + latest synoptic for F+54–360",
     )
-    p.add_argument("--fields", default="all")
+    p.add_argument("--fields", default="core")
     p.add_argument("--leads", default="")
     p.add_argument("--out", type=Path, default=SITE)
     p.add_argument("--workers", type=int, default=8)
@@ -467,19 +449,34 @@ def main() -> None:
 
     old_path = args.out / "manifest.json"
     old = json.loads(old_path.read_text()) if old_path.exists() else {}
+    if old.get("ensemble_init"):
+        extra["ensemble_init"] = old["ensemble_init"]
+    if old.get("ensemble_note"):
+        extra["ensemble_note"] = old["ensemble_note"]
     old_hourly = old.get("hourly_init") or old.get("init")
-    old_syn = old.get("synoptic_init") or old.get("init")
-    old_by_lead = {fr["lead"]: fr for fr in old.get("frames", [])}
-
     targets = (
         [int(x) for x in args.leads.split(",") if x.strip()] if args.leads else display_leads()
     )
     targets = [h for h in targets if h <= long_h]
-    if not args.leads and not args.force and old_hourly == hourly and old_syn == synoptic:
+    syn_ok = synoptic_frames_current(old, synoptic)
+    # ponytail: skip is init-based; a new CORE field would never cook. Ceiling:
+    # existence only, not stamp/width — fetch_one still recooks stale PNGs.
+    missing = any(
+        not (args.out / f"frames/{fid}/f{h:03d}.png").exists()
+        for fid in field_ids
+        for h in targets
+    )
+    if (
+        not args.leads
+        and not args.force
+        and old_hourly == hourly
+        and syn_ok
+        and not missing
+    ):
         print(f"already latest hourly {hourly} synoptic {synoptic}", flush=True)
         print("COOK_STATUS=noop", flush=True)
         return
-    if not args.leads and not args.force and old_syn == synoptic:
+    if not args.leads and not args.force and syn_ok and not missing:
         targets = [h for h in targets if h <= 48]
         print(f"synoptic {synoptic} unchanged — recook F+1–48 from {hourly}", flush=True)
 
@@ -493,12 +490,10 @@ def main() -> None:
         start = start_for_lead(hour, hourly, synoptic)
         init_dt = datetime.fromisoformat(start.replace("Z", "+00:00"))
         valid = (init_dt + timedelta(hours=hour)).strftime("%Y-%m-%dT%H:%M:%SZ")
-        old_fr = old_by_lead.get(hour, {})
-        stale = old_fr.get("init") != start
         for fid in field_ids:
             rel = f"frames/{fid}/f{hour:03d}.png"
             jobs.append(
-                (start, hour, valid, fid, FIELDS[fid], args.out / rel, args.force or stale)
+                (start, hour, valid, fid, FIELDS[fid], args.out / rel, args.force)
             )
 
     # ponytail: one slider; F+1–48 and F+54–360 may be different inits.

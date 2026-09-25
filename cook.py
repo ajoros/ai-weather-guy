@@ -6,7 +6,7 @@ then 6-hourly F54–360. NWS-style fixed bins. °F / inches / mph.
 
     export GOOGLE_CLOUD_PROJECT=weathernext3-joros
     .venv/bin/python cook.py                  # all free fields, 100 frames
-    .venv/bin/python cook.py --fields core    # T / 6-h QPF / SLP / wind
+    .venv/bin/python cook.py --fields core    # T / 1-h IMERG / run-total model QPF / SLP / wind
     python3 -m http.server --directory site 8000
 """
 
@@ -20,11 +20,13 @@ import time
 import urllib.request
 from datetime import datetime, timezone
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 import matplotlib
 
 matplotlib.use("Agg")
 import matplotlib.colors as mcolors
+import matplotlib.patheffects as pe
 import matplotlib.pyplot as plt
 import numpy as np
 import xarray as xr
@@ -56,6 +58,11 @@ def display_leads() -> list[int]:
     return list(range(1, 49)) + list(range(54, 361, 6))
 
 
+def ensemble_floor_lead(lead: int) -> int:
+    """Hold the last 6-h upper-air frame; F+1–5 uses F+6."""
+    return 6 if lead < 6 else (lead // 6) * 6
+
+
 def k_to_f(a: np.ndarray) -> np.ndarray:
     return a * 9.0 / 5.0 - 459.67
 
@@ -74,6 +81,30 @@ def pa_to_hpa(a: np.ndarray) -> np.ndarray:
 
 def frac_to_pct(a: np.ndarray) -> np.ndarray:
     return a * 100.0
+
+
+def k_to_c(a: np.ndarray) -> np.ndarray:
+    return np.asarray(a, dtype=float) - 273.15
+
+
+def ms_to_kt(a: np.ndarray) -> np.ndarray:
+    return np.asarray(a, dtype=float) * 1.943844
+
+
+def rel_vort_e5(lon: np.ndarray, lat: np.ndarray, u: np.ndarray, v: np.ndarray) -> np.ndarray:
+    """Relative vorticity in 10^-5 s^-1. u,v in m/s; lat increasing."""
+    r = 6371000.0
+    dlat = np.deg2rad(float(np.mean(np.diff(lat))))
+    dlon = np.deg2rad(float(np.mean(np.diff(lon))))
+    dy = r * dlat
+    dx = r * np.cos(np.deg2rad(lat))[:, None] * dlon
+    dvdx = np.gradient(v, axis=1) / np.maximum(dx, 1.0)
+    dudy = np.gradient(u, axis=0) / dy
+    return (dvdx - dudy) * 1e5
+
+
+def phi_to_dam(a: np.ndarray) -> np.ndarray:
+    return a / 9.80665 / 10.0
 
 
 # NWS 2018 standard curves via Herbie paint hex lists. Bounds kept in
@@ -229,6 +260,145 @@ PALETTES: dict[str, dict] = {
         "label": "hPa",
         "ticks": np.arange(980, 1048, 8),
     },
+    # Tropical Tidbits-ish upper air (cyclonic vort / 850 °C / jet kt).
+    "vort_e5": {
+        "colors": [
+            "#ffffff",
+            "#ffffcc",
+            "#ffff66",
+            "#ffcc00",
+            "#ff9900",
+            "#ff6600",
+            "#ff3300",
+            "#cc0000",
+            "#990000",
+            "#660000",
+            "#330000",
+        ],
+        "bounds": np.array([0, 8, 12, 16, 20, 24, 28, 32, 36, 40, 45, 50], dtype=float),
+        "label": "10^-5 s^-1",
+        "ticks": np.array([0, 8, 16, 24, 32, 40, 50], dtype=float),
+        "bad": "#ffffff",
+    },
+    "tmp_c": {
+        "colors": [
+            "#e050b8",
+            "#48d8d8",
+            "#c8e048",
+            "#2d8c2d",
+            "#38a038",
+            "#50c050",
+            "#88dc88",
+            "#c8f0c0",
+            "#ffffff",
+            "#fff8dc",
+            "#ffe680",
+            "#ffc848",
+            "#ffa020",
+            "#f06810",
+            "#d82810",
+            "#b01010",
+            "#8c0810",
+            "#c04088",
+        ],
+        "bounds": np.array(
+            [-52, -41, -35, -30, -25, -20, -15, -10, -5, 0, 5, 10, 15, 20, 25, 30, 35, 40, 48],
+            dtype=float,
+        ),
+        "label": "°C",
+        "ticks": np.array([-41, -30, -20, -10, 0, 10, 20, 30, 40, 48], dtype=float),
+        "bad": "#ffffff",
+    },
+    "wind_kt": {
+        "colors": [
+            "#ffffff",
+            "#e0f7ff",
+            "#a8ecff",
+            "#4fd0e0",
+            "#2ec27a",
+            "#7ae04a",
+            "#d2f020",
+            "#ffff00",
+            "#ffd000",
+            "#ff9000",
+            "#ff5000",
+            "#e00000",
+            "#c00030",
+            "#a00080",
+            "#8000a0",
+            "#600080",
+            "#400060",
+            "#200040",
+        ],
+        "bounds": np.array(
+            [0, 20, 30, 40, 50, 60, 70, 80, 90, 100, 110, 120, 130, 140, 150, 170, 190, 210, 250],
+            dtype=float,
+        ),
+        "label": "kt",
+        "ticks": np.array([0, 20, 40, 60, 80, 100, 120, 150, 190, 250], dtype=float),
+        "bad": "#ffffff",
+    },
+    "wind_kt_ll": {
+        "colors": [
+            "#ffffff",
+            "#f0fbff",
+            "#d8f4ff",
+            "#b0ebff",
+            "#7ed8f0",
+            "#40c8c8",
+            "#40d070",
+            "#80e040",
+            "#d0f020",
+            "#ffff00",
+            "#ffc000",
+            "#ff7000",
+            "#e01010",
+            "#b00060",
+            "#700080",
+        ],
+        "bounds": np.array(
+            [0, 7, 16, 25, 34, 40, 46, 52, 58, 64, 80, 96, 110, 125, 140, 155],
+            dtype=float,
+        ),
+        "label": "kt",
+        "ticks": np.array([0, 16, 34, 46, 64, 96, 125, 155], dtype=float),
+        "bad": "#ffffff",
+    },
+    # Pivotal-style 500 mb wind shade (white → purple → magenta, kt).
+    "wind_kt_pw": {
+        "colors": [
+            "#ffffff",
+            "#f4f4fc",
+            "#e8eaf8",
+            "#d8dcf4",
+            "#c4c6ec",
+            "#b0b0e4",
+            "#9a98da",
+            "#8880d0",
+            "#7a68c4",
+            "#7858b8",
+            "#8448ac",
+            "#943898",
+            "#a82888",
+            "#c02078",
+            "#d42070",
+            "#e43068",
+            "#ec4070",
+            "#e84878",
+            "#d04070",
+            "#c03868",
+            "#b03060",
+            "#a02858",
+            "#901850",
+        ],
+        "bounds": np.array(
+            [0, 20, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70, 75, 80, 85, 90, 95, 100, 105, 110, 115, 120, 125, 130],
+            dtype=float,
+        ),
+        "label": "kt",
+        "ticks": np.arange(20, 135, 10),
+        "bad": "#ffffff",
+    },
 }
 
 
@@ -241,6 +411,7 @@ def assert_palettes() -> None:
 
 # (id, label, zarr mean var, converter, palette, grid, accum_hours)
 # accum_hours=6 means sum the last 6 hourly steps of that var.
+# accum_hours=-1 means run total: sum forecast hours 1 through this lead.
 FIELD_ROWS = [
     ("station_t", "Station 2 m temperature", "station_head_temperature_2m_mean", k_to_f, "tmp_f", "0p05", 0),
     ("station_td", "Station 2 m dewpoint", "station_head_dewpoint_temperature_2m_mean", k_to_f, "dpt_f", "0p05", 0),
@@ -250,9 +421,18 @@ FIELD_ROWS = [
     ("qpf6_imerg_p90", "6-h IMERG QPF p90", "imerg_tp_1hr_p90", m_to_in, "pcp_in", "0p1", 6),
     ("qpf1_imerg", "1-h IMERG QPF", "imerg_tp_1hr_mean", m_to_in, "pcp_in", "0p1", 1),
     ("qpf1_model", "1-h model QPF", "total_precipitation_1hr_mean", m_to_in, "pcp_in", "0p1", 1),
+    ("qpf6_model", "6-h model QPF", "total_precipitation_1hr_mean", m_to_in, "pcp_in", "0p1", 6),
+    ("qpf_acc", "Model QPF run total", "total_precipitation_1hr_mean", m_to_in, "pcp_in", "0p1", -1),
     ("qpf1_exp", "1-h experimental QPF", "experimental_tp_1hr_mean", m_to_in, "pcp_in", "0p1", 1),
     ("slp", "Mean sea-level pressure", "mean_sea_level_pressure_mean", pa_to_hpa, "slp", "0p1", 0),
     ("wind10", "10 m wind speed", "wind_speed_10m_mean", ms_to_mph, "wind_mph", "0p1", 0),
+    ("wind10_p90", "10 m wind p90 (gust proxy)", "wind_speed_10m_p90", ms_to_mph, "wind_mph", "0p1", 0),
+    ("h500", "500 mb height", "geopotential", phi_to_dam, "wind_kt_pw", "0p25", 0),
+    ("t850", "850 mb temperature", "temperature", k_to_c, "tmp_c", "0p25", 0),
+    ("wind925", "925 mb wind", "u_component_of_wind", ms_to_kt, "wind_kt", "0p25", 0),
+    ("wind700", "700 mb wind", "u_component_of_wind", ms_to_kt, "wind_kt", "0p25", 0),
+    ("wind500", "500 mb wind", "u_component_of_wind", ms_to_kt, "wind_kt", "0p25", 0),
+    ("wind300", "300 mb wind", "u_component_of_wind", ms_to_kt, "wind_kt", "0p25", 0),
     ("sst", "Sea-surface temperature", "sea_surface_temperature_mean", k_to_f, "tmp_f", "0p1", 0),
     ("cloud_total", "Total cloud cover", "total_cloud_cover_mean", frac_to_pct, "cloud", "0p1", 0),
     ("cloud_low", "Low cloud cover", "low_cloud_cover_mean", frac_to_pct, "cloud", "0p1", 0),
@@ -260,7 +440,57 @@ FIELD_ROWS = [
     ("cloud_high", "High cloud cover", "high_cloud_cover_mean", frac_to_pct, "cloud", "0p1", 0),
 ]
 FIELDS = {row[0]: row for row in FIELD_ROWS}
-CORE_IDS = ["station_t", "qpf6_imerg", "slp", "wind10"]
+CORE_IDS = ["station_t", "qpf1_imerg", "qpf_acc", "slp", "wind10", "wind10_p90"]
+ENSEMBLE_IDS = ["h500", "t850", "wind925", "wind700", "wind500", "wind300"]
+PAGE_IDS = CORE_IDS + ENSEMBLE_IDS
+WIND_LEVEL = {"wind925": 925, "wind700": 700, "wind500": 500, "wind300": 300}
+PT = ZoneInfo("America/Los_Angeles")
+
+
+def accum_hours(hour: int, accum: int) -> list[int]:
+    """Forecast hours to include. accum=-1 is init→valid (1..hour), not last-N."""
+    if accum < 0:
+        return list(range(1, hour + 1))
+    if accum:
+        return list(range(max(1, hour - accum + 1), hour + 1))
+    return [hour]
+
+
+def parse_iso_z(value: datetime | str) -> datetime:
+    if isinstance(value, datetime):
+        dt = value
+    else:
+        dt = datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    return dt.astimezone(timezone.utc)
+
+
+def _ampm(dt: datetime) -> str:
+    h = dt.hour
+    return f"{((h + 11) % 12) + 1}{'am' if h < 12 else 'pm'}"
+
+
+def fmt_valid_clock(valid: datetime | str) -> str:
+    utc = parse_iso_z(valid)
+    pt = utc.astimezone(PT)
+    return (
+        f"{utc.strftime('%a')} {utc.day} {utc.strftime('%b')} "
+        f"{utc.strftime('%H')}Z / {_ampm(pt)} {pt.tzname()}"
+    )
+
+
+def fmt_init_clock(init: datetime | str) -> str:
+    utc = parse_iso_z(init)
+    pt = utc.astimezone(PT)
+    return f"{_ampm(pt)} {pt.tzname()} ({utc.strftime('%H')}Z)"
+
+
+def plot_title(label: str, note: str, valid: datetime | str, init: str, hour: int) -> str:
+    return (
+        f"{label}{note}   valid {fmt_valid_clock(valid)}   "
+        f"init {fmt_init_clock(init)}   F+{hour:03d}"
+    )
 
 
 def hours_since(td) -> int:
@@ -382,6 +612,47 @@ def _ne_lines() -> list[tuple[np.ndarray, np.ndarray, dict]]:
     return out
 
 
+WATERMARK = (
+    "AI-Weather-Guy  ·  ajoros  ·  ajoros.github.io/ai-weather-guy  ·  "
+    "Google WeatherNext 3 (experimental)"
+)
+
+
+def add_watermark(ax) -> None:
+    ax.text(
+        0.5,
+        0.012,
+        WATERMARK,
+        transform=ax.transAxes,
+        ha="center",
+        va="bottom",
+        fontsize=9,
+        color="0.12",
+        zorder=6,
+        path_effects=[pe.withStroke(linewidth=3.4, foreground="1", alpha=0.8)],
+    )
+
+
+def finish_map(fig, ax, mappable, pal, path: Path) -> None:
+    # ponytail: default colorbar fraction=0.15 leaves a fat white strip on an 18" fig.
+    ticks = pal.get("ticks", pal["bounds"])
+    fig.colorbar(
+        mappable,
+        ax=ax,
+        fraction=0.022,
+        pad=0.008,
+        shrink=0.86,
+        aspect=24,
+        label=pal["label"],
+        ticks=ticks,
+        extend="both",
+    )
+    fig.tight_layout(pad=0.25)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    fig.savefig(path, facecolor="white", bbox_inches="tight", pad_inches=0.08)
+    plt.close(fig)
+
+
 def add_boundaries(ax) -> None:
     # Domain 120–300 never crosses 0°, so plain lon/lat + NE lines.
     # Upgrade: cartopy 10m features if a 3.14 wheel appears.
@@ -398,14 +669,20 @@ def save_map(
     title: str,
     palette: str,
     contours: np.ndarray | None = None,
+    contour_data: np.ndarray | None = None,
+    contour_color: str = "k",
+    contour_label_color: str | None = None,
+    barbs=None,
+    streamlines=None,
+    marks=None,
 ) -> None:
     pal = PALETTES[palette]
     cmap = mcolors.ListedColormap(list(pal["colors"]))
-    cmap.set_bad("#e8e8e8")
+    cmap.set_bad(pal.get("bad", "#e8e8e8"))
     cmap.set_under(pal["colors"][0])
     cmap.set_over(pal["colors"][-1])
     norm = mcolors.BoundaryNorm(pal["bounds"], cmap.N, clip=False)
-    fig, ax = plt.subplots(figsize=(13.5, 6.4), dpi=110)
+    fig, ax = plt.subplots(figsize=(18.0, 8.52), dpi=130)
     ax.set_xlim(LON0, LON1)
     ax.set_ylim(LAT0, LAT1)
     pcm = ax.pcolormesh(lon, lat, data, cmap=cmap, norm=norm, shading="nearest", zorder=1)
@@ -413,27 +690,60 @@ def save_map(
         cs = ax.contour(
             lon,
             lat,
-            data,
+            contour_data if contour_data is not None else data,
             levels=contours,
-            colors="k",
-            linewidths=0.28,
-            alpha=0.55,
+            colors=contour_color,
+            linewidths=0.7,
+            alpha=0.85,
             zorder=2,
         )
-        ax.clabel(cs, contours[::2], fmt="%d", fontsize=6, inline=True)
+        ax.clabel(cs, contours[::2], fmt="%d", fontsize=7, inline=True)
+        if contour_label_color:
+            for t in getattr(cs, "labelTexts", []):
+                t.set_color(contour_label_color)
+    if streamlines is not None:
+        lonb, latb, u, v = streamlines
+        step = max(2, int(round(len(lonb) / 48)))
+        ax.streamplot(
+            lonb[::step],
+            latb[::step],
+            u[::step, ::step],
+            v[::step, ::step],
+            density=1.2,
+            color="0.15",
+            linewidth=0.45,
+            arrowsize=0.7,
+            zorder=3,
+        )
+    if barbs is not None:
+        lonb, latb, u, v = barbs
+        step = max(1, int(round(len(lonb) / 32)))
+        xx, yy = np.meshgrid(lonb, latb)
+        ax.barbs(
+            xx[::step, ::step],
+            yy[::step, ::step],
+            u[::step, ::step],
+            v[::step, ::step],
+            length=5.4,
+            linewidth=0.4,
+            color="0.1",
+            barb_increments={"half": 5, "full": 10, "flag": 50},
+            zorder=3,
+        )
     add_boundaries(ax)
-    ax.set_facecolor("#f4f4f4")
+    ax.set_facecolor(pal.get("bad", "#f4f4f4"))
     ax.grid(True, lw=0.3, color="0.55", alpha=0.45, zorder=4)
+    if marks:
+        for x, y, kind, val in marks:
+            color = "#1a4fd6" if kind == "H" else "#d01010"
+            ax.text(x, y, kind, color=color, fontsize=12, fontweight="bold", ha="center", va="center", zorder=5)
+            ax.text(x, y - 1.8, f"{val:.0f}", color=color, fontsize=7, ha="center", va="top", zorder=5)
     ax.tick_params(labelsize=8)
     ax.set_xlabel("longitude (0–360)", fontsize=8)
     ax.set_ylabel("latitude", fontsize=8)
     ax.set_title(title, loc="left", fontsize=11)
-    ticks = pal.get("ticks", pal["bounds"])
-    fig.colorbar(pcm, ax=ax, shrink=0.78, label=pal["label"], pad=0.015, ticks=ticks, extend="both")
-    fig.tight_layout()
-    path.parent.mkdir(parents=True, exist_ok=True)
-    fig.savefig(path, facecolor="white")
-    plt.close(fig)
+    add_watermark(ax)
+    finish_map(fig, ax, pcm, pal, path)
 
 
 def parse_fields(arg: str) -> list[str]:
@@ -441,6 +751,10 @@ def parse_fields(arg: str) -> list[str]:
         return [row[0] for row in FIELD_ROWS]
     if arg == "core":
         return list(CORE_IDS)
+    if arg == "ensemble":
+        return list(ENSEMBLE_IDS)
+    if arg == "page":
+        return list(PAGE_IDS)
     ids = [x.strip() for x in arg.split(",") if x.strip()]
     unknown = [i for i in ids if i not in FIELDS]
     if unknown:
@@ -479,6 +793,59 @@ def write_manifest(
     if extra:
         manifest.update(extra)
     (out / "manifest.json").write_text(json.dumps(manifest, indent=2) + "\n")
+
+
+def page_field_ids(old: dict, incoming: list[str]) -> list[str]:
+    """Keep surface + upper-air ids across separate cooks."""
+    have = {v.get("id") for v in old.get("variables") or []}
+    want = set(incoming) | have
+    return [i for i in PAGE_IDS if i in want]
+
+
+def merge_manifest(
+    out: Path,
+    *,
+    run: str,
+    init: str,
+    source: str,
+    new_ids: list[str],
+    done_hours: dict[int, dict],
+    extra: dict | None = None,
+    keep_clock: bool = False,
+) -> list[dict]:
+    path = out / "manifest.json"
+    old = json.loads(path.read_text()) if path.exists() else {"variables": [], "frames": []}
+    ids = page_field_ids(old, new_ids)
+    by_lead = {fr["lead"]: fr for fr in old.get("frames", [])}
+    for hour, fr in done_hours.items():
+        cur = by_lead.get(hour)
+        if cur is None:
+            cur = {"lead": hour, "valid": fr["valid"], "files": {}}
+            if fr.get("init"):
+                cur["init"] = fr["init"]
+        elif not keep_clock:
+            cur["valid"] = fr["valid"]
+            if fr.get("init"):
+                cur["init"] = fr["init"]
+        cur["files"].update(fr["files"])
+        by_lead[hour] = cur
+    for fr in by_lead.values():
+        fr["files"] = {k: v for k, v in fr.get("files", {}).items() if k in ids}
+    if extra and extra.get("synoptic_init"):
+        for h, fr in by_lead.items():
+            if "init" not in fr and h > 48:
+                fr["init"] = extra["synoptic_init"]
+    frames = [by_lead[h] for h in display_leads() if h in by_lead]
+    write_manifest(
+        out,
+        run=run,
+        init=init,
+        source=source,
+        field_ids=ids,
+        frames=frames,
+        extra=extra,
+    )
+    return frames
 
 
 def parse_args() -> argparse.Namespace:
@@ -521,17 +888,15 @@ def main() -> None:
         raise SystemExit("no matching lead times")
 
     specs = [FIELDS[i] for i in field_ids]
-    precip_vars = sorted({s[2] for s in specs if s[6] >= 1})
+    precip_vars = sorted({s[2] for s in specs if s[6]})
     inst_01 = [s for s in specs if s[5] == "0p1" and s[6] == 0]
     inst_05 = [s for s in specs if s[5] == "0p05"]
     precip_hours: set[int] = set()
     for s in specs:
-        if s[6] <= 1:
+        if not s[6]:
             continue
         for t in targets:
-            precip_hours.update(range(max(1, t - (s[6] - 1)), t + 1))
-    if any(s[6] == 1 for s in specs):
-        precip_hours.update(targets)
+            precip_hours.update(accum_hours(t, s[6]))
 
     out = args.out
     frames_root = out / "frames"
@@ -547,7 +912,7 @@ def main() -> None:
     lon01 = lat01 = lon05 = lat05 = None
     done: list[dict] = []
 
-    walk = sorted(set(targets) | precip_hours)
+    walk = sorted(h for h in (set(targets) | precip_hours) if h in index)
     for hour in walk:
         i = index[hour]
         if hour in precip_hours and precip_vars:
@@ -582,8 +947,8 @@ def main() -> None:
             files[fid] = rel
             if path.exists() and not args.force:
                 continue
-            if accum >= 1:
-                hours = range(max(1, hour - (accum - 1)), hour + 1)
+            if accum:
+                hours = accum_hours(hour, accum)
                 chunks = [precip_cache[(var, h)] for h in hours if (var, h) in precip_cache]
                 if not chunks:
                     continue
@@ -603,12 +968,13 @@ def main() -> None:
                 lon,
                 lat,
                 z,
-                title=f"{label}{extra}   WN3 mean   valid {valid}   F+{hour:03d}",
+                title=plot_title(label, extra, valid, init_s, hour),
                 palette=pal,
                 contours=np.arange(960, 1060, 4) if fid == "slp" else None,
             )
 
-        for h in [h for v, h in precip_cache if h < hour - 6]:
+        retain = hour if any(s[6] < 0 for s in specs) else 6
+        for h in [h for v, h in precip_cache if h < hour - retain]:
             for v in precip_vars:
                 precip_cache.pop((v, h), None)
 
