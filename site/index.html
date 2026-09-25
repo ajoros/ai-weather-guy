@@ -108,7 +108,9 @@
       color: #141414; pointer-events: none;
       text-shadow: 0 0 4px #fff, 0 0 4px #fff, 0 1px 0 #fff;
     }
-    figcaption { font-size: 13px; color: #5f6368; margin: 8px 2px 0; }
+    figcaption { margin: 8px 2px 0; }
+    .cap-title { font-size: 14px; font-weight: 550; color: #0b0c10; }
+    .cap-sub { font-size: 12px; color: #5f6368; margin-top: 2px; }
     .miss { color: #b3261e; padding: 24px; }
     .err { color: #b3261e; padding: 18px; }
     body.lb-open { overflow: hidden; }
@@ -208,6 +210,79 @@
     const $ = (id) => document.getElementById(id);
     const CLOUD_LAYERS = new Set(["cloud_low", "cloud_mid", "cloud_high"]);
     const UPPER_IDS = new Set(["h500", "t850", "wind925", "wind700", "wind500", "wind300"]);
+    const CAPTIONS = {
+      station_t: {
+        title: "Temperature near the ground",
+        sub: "About 2 meters (6.5 feet) up, like a weather station · °F",
+      },
+      qpf1_imerg: {
+        title: "Rain in the past hour",
+        sub: "NASA IMERG satellite estimate · QPF = quantitative precipitation forecast · inches",
+      },
+      qpf_acc: {
+        title: "Total rain since this forecast started",
+        sub: "WeatherNext 3 model rainfall · QPF = quantitative precipitation forecast · inches",
+      },
+      slp: {
+        title: "Sea-level pressure",
+        sub: "Mean sea-level pressure · hPa (hectopascals, same as millibars)",
+      },
+      wind10: {
+        title: "Wind speed near the ground",
+        sub: "10 meters (33 feet) up · mph, with barbs in knots",
+      },
+      wind10_p90: {
+        title: "Stronger wind gusts",
+        sub: "90th percentile of the ensemble — a gusty-day proxy · mph",
+      },
+      h500: {
+        title: "500 mb height and wind",
+        sub: "About 18,000 feet — the steering flow for storms · mb = millibars · knots",
+      },
+      t850: {
+        title: "850 mb temperature",
+        sub: "About 5,000 feet — warm versus cool air aloft · mb = millibars · °C",
+      },
+      wind925: {
+        title: "925 mb wind",
+        sub: "About 2,500 feet · mb = millibars · knots",
+      },
+      wind700: {
+        title: "700 mb wind",
+        sub: "About 10,000 feet · mb = millibars · knots",
+      },
+      wind500: {
+        title: "500 mb wind",
+        sub: "About 18,000 feet · mb = millibars · knots",
+      },
+      wind300: {
+        title: "300 mb wind (jet stream)",
+        sub: "About 30,000 feet · mb = millibars · knots",
+      },
+    };
+
+    function captionParts(v, extra) {
+      const c = CAPTIONS[v.id];
+      const extraBit = extra ? " · " + extra : "";
+      if (c) return { title: c.title + extraBit, sub: c.sub };
+      return { title: (v.label || v.id) + extraBit, sub: v.units || "" };
+    }
+
+    function fillCaption(el, v, extra) {
+      if (!el) return;
+      const { title, sub } = captionParts(v, extra);
+      el.replaceChildren();
+      const t = document.createElement("div");
+      t.className = "cap-title";
+      t.textContent = title;
+      el.appendChild(t);
+      if (sub) {
+        const s = document.createElement("div");
+        s.className = "cap-sub";
+        s.textContent = sub;
+        el.appendChild(s);
+      }
+    }
     let manifest = null;
     let i = 0;
     let timer = null;
@@ -304,12 +379,12 @@
         wrap.className = "map-wrap";
         const img = document.createElement("img");
         img.id = "img-" + v.id;
-        img.alt = v.label;
+        img.alt = captionParts(v).title;
         const wm = document.createElement("div");
         wm.className = "wm";
         wm.textContent = "AI-Weather-Guy · ajoros · ajoros.github.io/ai-weather-guy · Google WeatherNext 3 (experimental)";
         const cap = document.createElement("figcaption");
-        cap.textContent = v.label + (v.units ? " (" + v.units + ")" : "");
+        fillCaption(cap, v);
         wrap.appendChild(img);
         wrap.appendChild(wm);
         fig.appendChild(wrap);
@@ -354,16 +429,15 @@
         const src = frameSrc(fr, v.id);
         const fig = img.closest("figure");
         const cap = fig && fig.querySelector("figcaption");
-        const base = v.label + (v.units ? " (" + v.units + ")" : "");
         const off = UPPER_IDS.has(v.id) && use && use.lead !== fr.lead;
         if (src) {
           if (fig) fig.hidden = false;
           img.src = src;
-          if (cap) cap.textContent = off ? base + " · " + hoursAhead(use.lead) : base;
+          fillCaption(cap, v, off ? hoursAhead(use.lead) : "");
         } else if (UPPER_IDS.has(v.id)) {
           if (fig) fig.hidden = false;
           img.removeAttribute("src");
-          if (cap) cap.textContent = base;
+          fillCaption(cap, v);
         } else {
           img.removeAttribute("src");
           if (fig) fig.hidden = true;
@@ -378,12 +452,10 @@
           closeLightbox();
         } else {
           lb.src = src;
-          lb.alt = spec ? spec.label : openId;
           const off = UPPER_IDS.has(openId) && use && use.lead !== fr.lead;
-          $("lb-cap").textContent =
-            (spec ? spec.label + (spec.units ? " (" + spec.units + ")" : "") : openId) +
-            (off ? " · " + hoursAhead(use.lead) : "") +
-            " · " + when;
+          const parts = spec ? captionParts(spec, off ? hoursAhead(use.lead) : "") : { title: openId, sub: "" };
+          lb.alt = parts.title;
+          $("lb-cap").textContent = parts.title + (parts.sub ? " · " + parts.sub : "") + " · " + when;
         }
       }
       preload(i - 1);
