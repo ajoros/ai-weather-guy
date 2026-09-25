@@ -35,9 +35,33 @@
     .when { flex: 1; text-align: center; min-width: 0; }
     .clock { font-size: 20px; font-weight: 650; letter-spacing: -0.02em; margin: 0; }
     .meta { color: #5f6368; font-size: 13px; margin-top: 2px; }
-    .wn3-box { text-align: right; flex-shrink: 0; }
+    .wn3-box { position: relative; text-align: right; flex-shrink: 0; }
     .wn3 { font-size: 13px; font-weight: 650; color: #0b0c10; }
     .wn3-sub { margin-top: 2px; font-size: 12px; color: #5f6368; }
+    .why {
+      margin-top: 6px;
+      background: #eef2ff; color: #1a237e; border-color: #c5cae9;
+      padding: 4px 10px; font-size: 12px;
+    }
+    .why:hover, .why:focus-visible { background: #3d5afe; color: #fff; border-color: #3d5afe; }
+    .why-pop {
+      display: none;
+      position: absolute; top: calc(100% + 8px); right: 0;
+      width: min(420px, calc(100vw - 40px));
+      text-align: left;
+      background: #fff; color: #3c4043;
+      border: 1px solid #e6e8ef; border-radius: 12px;
+      padding: 14px 16px;
+      font-size: 13px; font-weight: 400; line-height: 1.45;
+      box-shadow: 0 12px 32px #1a237e1f;
+      z-index: 30;
+    }
+    .why-pop p { margin: 0; }
+    .why-pop .more { margin-top: 10px; }
+    .why-pop a { color: #3d5afe; }
+    .wn3-box:hover .why-pop,
+    .wn3-box:focus-within .why-pop,
+    .wn3-box.open .why-pop { display: block; }
     .banner {
       background: #eef2ff; color: #1a237e; font-size: 12px;
       padding: 6px 12px; border-radius: 999px; margin-top: 8px;
@@ -139,9 +163,14 @@
         <div class="clock" id="clock"></div>
         <div class="meta" id="meta">Loading manifest…</div>
       </div>
-      <div class="wn3-box">
+      <div class="wn3-box" id="why-box">
         <div class="wn3">WeatherNext 3</div>
         <div class="wn3-sub">Google data · experimental</div>
+        <button type="button" class="why" id="why" aria-expanded="false" aria-controls="why-pop">Why WeatherNext 3</button>
+        <div class="why-pop" id="why-pop">
+          <p>WeatherNext 3 is Google DeepMind’s AI weather model, the same family now in Search, Maps, and Gemini. GFS and the ECMWF Euro solve physics equations on a supercomputer; a global run can take an hour. WeatherNext 3 learned weather from decades of analyses and satellite data, then writes a new forecast in seconds, every hour. It is an ensemble — many slightly different futures, averaged here into the most likely map — with surface detail down to about 5 km. Faster and, in Google’s tests, sharper than those legacy models. Still experimental research, not an official warning.</p>
+          <p class="more"><a href="https://deepmind.google/science/weathernext" target="_blank" rel="noopener">DeepMind overview</a></p>
+        </div>
       </div>
     </div>
     <div class="controls">
@@ -391,6 +420,17 @@
     $("next").addEventListener("click", () => step(1));
     $("play").addEventListener("click", togglePlay);
     $("now").addEventListener("click", goNow);
+    $("why").addEventListener("click", (e) => {
+      e.stopPropagation();
+      const box = $("why-box");
+      const open = !box.classList.contains("open");
+      box.classList.toggle("open", open);
+      $("why").setAttribute("aria-expanded", open ? "true" : "false");
+    });
+    document.addEventListener("click", () => {
+      $("why-box").classList.remove("open");
+      $("why").setAttribute("aria-expanded", "false");
+    });
     $("aviation").addEventListener("change", () => {
       setMeta();
       buildFigures();
