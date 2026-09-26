@@ -1,0 +1,563 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>AI-Weather-Guy — WeatherNext 3</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700&display=swap" rel="stylesheet" />
+  <style>
+    :root { color-scheme: light; }
+    body {
+      margin: 0;
+      font-family: "DM Sans", ui-sans-serif, system-ui, sans-serif;
+      background: #f4f6fb;
+      color: #0b0c10;
+    }
+    header {
+      position: sticky; top: 0; z-index: 25;
+      background: #fffffff2;
+      backdrop-filter: blur(16px);
+      padding: 10px 28px 10px;
+      border-bottom: 1px solid #e6e8ef;
+    }
+    .top {
+      display: flex; align-items: center; justify-content: space-between;
+      gap: 20px; width: 100%;
+    }
+    .brand-left { display: flex; align-items: center; gap: 12px; min-width: 0; }
+    .logo { width: 56px; height: 56px; display: block; flex-shrink: 0; }
+    h1 { font-size: 22px; margin: 0; font-weight: 700; letter-spacing: -0.03em; }
+    .byline { margin-top: 2px; font-size: 13px; color: #5f6368; }
+    .byline a { color: #3d5afe; text-decoration: none; }
+    .byline a:hover { text-decoration: underline; }
+    .when { flex: 1; text-align: center; min-width: 0; }
+    .clock { font-size: 20px; font-weight: 650; letter-spacing: -0.02em; margin: 0; }
+    .meta { color: #5f6368; font-size: 13px; margin-top: 2px; }
+    .wn3-box { position: relative; text-align: right; flex-shrink: 0; }
+    .wn3 { font-size: 13px; font-weight: 650; color: #0b0c10; }
+    .wn3-sub { margin-top: 2px; font-size: 12px; color: #5f6368; }
+    .why {
+      margin-top: 6px;
+      background: #eef2ff; color: #1a237e; border-color: #c5cae9;
+      padding: 4px 10px; font-size: 12px;
+    }
+    .why:hover, .why:focus-visible { background: #3d5afe; color: #fff; border-color: #3d5afe; }
+    .why-pop {
+      display: none;
+      position: absolute; top: calc(100% + 8px); right: 0;
+      width: min(480px, calc(100vw - 40px));
+      text-align: left;
+      background: #fff; color: #3c4043;
+      border: 1px solid #e6e8ef; border-radius: 12px;
+      padding: 16px 18px;
+      font-size: 13px; font-weight: 400; line-height: 1.5;
+      box-shadow: 0 12px 32px #1a237e1f;
+      z-index: 30;
+    }
+    .why-pop h2 { margin: 0 0 8px; font-size: 15px; font-weight: 650; color: #0b0c10; letter-spacing: -0.02em; }
+    .why-pop p { margin: 0; }
+    .why-pop p + p { margin-top: 10px; }
+    .why-pop a { color: #3d5afe; }
+    .wn3-box:hover .why-pop,
+    .wn3-box:focus-within .why-pop,
+    .wn3-box.open .why-pop { display: block; }
+    .banner {
+      background: #eef2ff; color: #1a237e; font-size: 12px;
+      padding: 6px 12px; border-radius: 999px; margin-top: 8px;
+    }
+    .controls {
+      display: flex; align-items: center; gap: 10px;
+      margin-top: 8px;
+    }
+    button {
+      background: #fff; color: #0b0c10; border: 1px solid #dadce0;
+      border-radius: 999px; padding: 7px 14px; cursor: pointer; font: inherit;
+    }
+    button:hover { background: #eef2ff; border-color: #c5cae9; }
+    #play, #now, #lb-play { background: #0b0c10; color: #fff; border-color: #0b0c10; }
+    #play:hover, #now:hover, #lb-play:hover { background: #3d5afe; border-color: #3d5afe; }
+    input[type=range] { flex: 1; accent-color: #3d5afe; }
+    #lead { font-size: 13px; color: #5f6368; min-width: 3.2em; }
+    .maps {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 18px;
+      padding: 22px 28px 56px;
+    }
+    .toggles { font-size: 13px; color: #5f6368; white-space: nowrap; cursor: pointer; }
+    figure { margin: 0; cursor: pointer; }
+    .map-wrap {
+      position: relative;
+      aspect-ratio: 21 / 10;
+      background: #fff;
+      border-radius: 16px;
+      overflow: hidden;
+      box-shadow: 0 8px 28px #1a237e14;
+    }
+    figure img {
+      width: 100%; height: 100%; object-fit: contain;
+      background: #fff; display: block;
+    }
+    figcaption { margin: 8px 2px 0; }
+    .cap-title { font-size: 14px; font-weight: 550; color: #0b0c10; }
+    .cap-sub { font-size: 12px; color: #5f6368; margin-top: 2px; }
+    .miss { color: #b3261e; padding: 24px; }
+    .err { color: #b3261e; padding: 18px; }
+    body.lb-open { overflow: hidden; }
+    #lightbox {
+      display: none;
+      position: fixed; inset: 0; z-index: 40;
+      background: #f4f6fb;
+      flex-direction: column;
+      box-sizing: border-box;
+    }
+    #lightbox.open { display: flex; }
+    #lightbox .sheet {
+      flex: 1; min-height: 0; width: 100%;
+      display: flex; align-items: center; justify-content: center;
+      position: relative;
+    }
+    #lightbox img {
+      width: 100%; height: 100%;
+      object-fit: contain;
+      background: #fff; display: block;
+    }
+    #lightbox .lb-bar {
+      display: flex; align-items: center; gap: 8px;
+      flex-shrink: 0;
+      padding: 10px 16px;
+      background: #fff;
+      border-top: 1px solid #e6e8ef;
+    }
+    #lightbox .lb-cap { flex: 1; color: #0b0c10; font-size: 13px; }
+    @media (max-width: 900px) {
+      .maps { grid-template-columns: 1fr; padding: 16px; }
+      header { padding: 10px 16px; }
+      .top { flex-wrap: wrap; }
+      .when { flex: 1 1 100%; text-align: left; order: 3; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="top">
+      <div class="brand-left">
+        <img class="logo" src="logo-mark.png" width="56" height="56" alt="" />
+        <div>
+          <h1>AI-Weather-Guy</h1>
+          <div class="byline">
+            <a href="https://github.com/ajoros">ajoros</a>
+          </div>
+        </div>
+      </div>
+      <div class="when">
+        <div class="clock" id="clock"></div>
+        <div class="meta" id="meta">Loading manifest…</div>
+      </div>
+      <div class="wn3-box" id="why-box">
+        <div class="wn3">WeatherNext 3</div>
+        <div class="wn3-sub">Google data · experimental</div>
+        <button type="button" class="why" id="why" aria-expanded="false" aria-controls="why-pop">Why WeatherNext 3</button>
+        <div class="why-pop" id="why-pop">
+          <h2>Why WeatherNext 3</h2>
+          <p>WeatherNext 3 is Google DeepMind’s most advanced global weather AI — the same model family now behind forecasts in Search, Maps, and Gemini.</p>
+          <p>For decades the workhorses have been physics models: the American GFS, Europe’s ECMWF, and their cousins. They march the atmosphere forward by solving equations on a supercomputer. That science is remarkable, and it is also slow. A single global run can take an hour, so those centers typically refresh only a few times a day.</p>
+          <p>WeatherNext 3 learned the weather instead. Trained on decades of analyses and, in this generation, raw satellite imagery, it can draw a new global forecast in seconds — every hour, around the clock. You get a tighter watch on rain, wind, and temperature as they change, not a snapshot that is already six hours old.</p>
+          <p>It is also an ensemble: dozens of slightly different futures from the same start. This page shows the mean of those members, so the map is the most likely pattern, not one noisy roll of the dice. Surface fields, including station-scale temperature, are produced at about 5&nbsp;km; winds and other surfaces at about 10&nbsp;km.</p>
+          <p>In Google’s tests that mix of speed, hourly updates, and ensemble detail is competitive with — and on many scores ahead of — those legacy systems. It is still experimental research. Use it with GFS and the Euro, not instead of a National Weather Service watch or warning.</p>
+          <p><a href="https://deepmind.google/science/weathernext" target="_blank" rel="noopener">DeepMind overview</a></p>
+        </div>
+      </div>
+    </div>
+    <div class="controls">
+      <button id="prev" type="button">←</button>
+      <button id="play" type="button">Play</button>
+      <button id="next" type="button">→</button>
+      <button id="now" type="button">Now</button>
+      <input id="slider" type="range" min="0" max="0" value="0" title="Click a map to enlarge" />
+      <span id="lead">+0h</span>
+      <label class="toggles" hidden><input type="checkbox" id="aviation" /> Clouds</label>
+    </div>
+    <div class="banner" id="banner"></div>
+  </header>
+  <div class="maps" id="maps"></div>
+  <div id="lightbox">
+    <div class="sheet">
+      <img id="lb-img" alt="" />
+    </div>
+    <div class="lb-bar">
+      <button type="button" id="lb-prev">←</button>
+      <button type="button" id="lb-play">Play</button>
+      <button type="button" id="lb-next">→</button>
+      <div class="lb-cap" id="lb-cap"></div>
+      <button type="button" id="lb-x" aria-label="Close">×</button>
+    </div>
+  </div>
+  <script>
+    const $ = (id) => document.getElementById(id);
+    const CLOUD_LAYERS = new Set(["cloud_low", "cloud_mid", "cloud_high"]);
+    const UPPER_IDS = new Set(["h500", "t850", "wind925", "wind700", "wind500", "wind300"]);
+    const CAPTIONS = {
+      station_t: {
+        title: "Temperature near the ground",
+        sub: "About 2 meters (6.5 feet) up, like a weather station · °F",
+      },
+      qpf1_imerg: {
+        title: "Rain in the past hour",
+        sub: "NASA IMERG satellite estimate · QPF = quantitative precipitation forecast · inches",
+      },
+      qpf_acc: {
+        title: "Total rain since this forecast started",
+        sub: "WeatherNext 3 model rainfall · QPF = quantitative precipitation forecast · inches",
+      },
+      slp: {
+        title: "Sea-level pressure",
+        sub: "Mean sea-level pressure · hPa (hectopascals, same as millibars)",
+      },
+      wind10: {
+        title: "Wind speed near the ground",
+        sub: "10 meters (33 feet) up · mph, with barbs in knots",
+      },
+      wind10_p90: {
+        title: "Stronger wind gusts",
+        sub: "90th percentile of the ensemble — a gusty-day proxy · mph",
+      },
+      h500: {
+        title: "500 mb height and wind",
+        sub: "About 18,000 feet — the steering flow for storms · mb = millibars · knots",
+      },
+      t850: {
+        title: "850 mb temperature",
+        sub: "About 5,000 feet — warm versus cool air aloft · mb = millibars · °C",
+      },
+      wind925: {
+        title: "925 mb wind",
+        sub: "About 2,500 feet · mb = millibars · knots",
+      },
+      wind700: {
+        title: "700 mb wind",
+        sub: "About 10,000 feet · mb = millibars · knots",
+      },
+      wind500: {
+        title: "500 mb wind",
+        sub: "About 18,000 feet · mb = millibars · knots",
+      },
+      wind300: {
+        title: "300 mb wind (jet stream)",
+        sub: "About 30,000 feet · mb = millibars · knots",
+      },
+    };
+
+    function captionParts(v, extra) {
+      const c = CAPTIONS[v.id];
+      const extraBit = extra ? " · " + extra : "";
+      if (c) return { title: c.title + extraBit, sub: c.sub };
+      return { title: (v.label || v.id) + extraBit, sub: v.units || "" };
+    }
+
+    function fillCaption(el, v, extra) {
+      if (!el) return;
+      const { title, sub } = captionParts(v, extra);
+      el.replaceChildren();
+      const t = document.createElement("div");
+      t.className = "cap-title";
+      t.textContent = title;
+      el.appendChild(t);
+      if (sub) {
+        const s = document.createElement("div");
+        s.className = "cap-sub";
+        s.textContent = sub;
+        el.appendChild(s);
+      }
+    }
+    let manifest = null;
+    let i = 0;
+    let timer = null;
+    let openId = null;
+
+    function ptParts(d, extra) {
+      const parts = new Intl.DateTimeFormat("en-US", Object.assign({
+        timeZone: "America/Los_Angeles",
+        hour: "numeric",
+        hour12: true,
+        timeZoneName: "short",
+      }, extra || {})).formatToParts(d);
+      const pick = (t) => (parts.find((p) => p.type === t) || {}).value || "";
+      const ap = pick("dayPeriod").toLowerCase().replace(/\./g, "");
+      return { h: pick("hour"), ap, tz: pick("timeZoneName"), pick };
+    }
+
+    function fmtWhen(iso) {
+      const d = new Date(iso);
+      if (Number.isNaN(d.getTime())) return iso;
+      const pt = ptParts(d, { weekday: "long", month: "short", day: "numeric" });
+      return pt.pick("weekday") + ", " + pt.pick("month") + " " + pt.pick("day") +
+        " · " + pt.h + pt.ap + " " + pt.tz;
+    }
+
+    function fmtInitShort(iso) {
+      const d = new Date(iso);
+      if (Number.isNaN(d.getTime())) return iso;
+      const pt = ptParts(d);
+      return pt.h + pt.ap + " " + pt.tz;
+    }
+
+    function hoursAhead(lead) {
+      return lead === 1 ? "1 hour ahead" : lead + " hours ahead";
+    }
+
+    function closestNowIndex(frames) {
+      const now = Date.now();
+      let best = 0;
+      let bestAbs = Infinity;
+      frames.forEach((fr, idx) => {
+        const t = new Date(fr.valid).getTime();
+        if (Number.isNaN(t)) return;
+        const d = Math.abs(t - now);
+        if (d < bestAbs) {
+          bestAbs = d;
+          best = idx;
+        }
+      });
+      return best;
+    }
+
+    function goNow() {
+      if (!manifest || !manifest.frames.length) return;
+      i = closestNowIndex(manifest.frames);
+      show();
+    }
+
+    function closeLightbox() {
+      openId = null;
+      $("lightbox").classList.remove("open");
+      document.body.classList.remove("lb-open");
+    }
+
+    function openLightbox(id) {
+      openId = id;
+      $("lightbox").classList.add("open");
+      document.body.classList.add("lb-open");
+      show();
+    }
+
+    function visibleVars() {
+      const av = $("aviation") && $("aviation").checked;
+      return manifest.variables.filter((v) => av || !CLOUD_LAYERS.has(v.id));
+    }
+
+    function setMeta() {
+      const cloudBox = $("aviation") && $("aviation").closest("label");
+      const hasCloud = manifest.variables.some((v) => CLOUD_LAYERS.has(v.id));
+      if (cloudBox) cloudBox.hidden = !hasCloud;
+      if (!hasCloud && $("aviation")) $("aviation").checked = false;
+    }
+
+    function buildFigures() {
+      const box = $("maps");
+      box.innerHTML = "";
+      if (!manifest.frames.length) {
+        box.innerHTML = '<p class="miss">Cook is running — no frames yet. Refresh shortly.</p>';
+        return;
+      }
+      visibleVars().forEach((v) => {
+        const fig = document.createElement("figure");
+        const wrap = document.createElement("div");
+        wrap.className = "map-wrap";
+        const img = document.createElement("img");
+        img.id = "img-" + v.id;
+        img.alt = captionParts(v).title;
+        const cap = document.createElement("figcaption");
+        fillCaption(cap, v);
+        wrap.appendChild(img);
+        fig.appendChild(wrap);
+        fig.appendChild(cap);
+        fig.addEventListener("click", () => openLightbox(v.id));
+        box.appendChild(fig);
+      });
+      if (openId && !visibleVars().some((v) => v.id === openId)) closeLightbox();
+      show();
+    }
+
+    function ensembleLead(lead) {
+      return lead < 6 ? 6 : Math.floor(lead / 6) * 6;
+    }
+
+    function frameForVar(fr, id) {
+      if (!UPPER_IDS.has(id) || (fr.files && fr.files[id])) return fr;
+      const want = ensembleLead(fr.lead);
+      return manifest.frames.find((f) => f.lead === want) || fr;
+    }
+
+    function frameSrc(fr, id) {
+      const use = frameForVar(fr, id);
+      const src = (use.files && use.files[id]) || "";
+      if (!src) return "";
+      const t = (use.init || fr.init || manifest.init || "") + "-" + (manifest.generated || "");
+      return src + "?t=" + encodeURIComponent(t);
+    }
+
+    function show() {
+      const fr = manifest.frames[i];
+      const init = fr.init || manifest.init;
+      $("lead").textContent = "+" + fr.lead + "h";
+      const when = fmtWhen(fr.valid);
+      $("clock").textContent = when;
+      $("meta").textContent = hoursAhead(fr.lead) + " · forecast started " + fmtInitShort(init);
+      $("slider").value = String(i);
+      for (const v of visibleVars()) {
+        const img = $("img-" + v.id);
+        if (!img) continue;
+        const use = frameForVar(fr, v.id);
+        const src = frameSrc(fr, v.id);
+        const fig = img.closest("figure");
+        const cap = fig && fig.querySelector("figcaption");
+        const off = UPPER_IDS.has(v.id) && use && use.lead !== fr.lead;
+        if (src) {
+          if (fig) fig.hidden = false;
+          img.src = src;
+          fillCaption(cap, v, off ? hoursAhead(use.lead) : "");
+        } else if (UPPER_IDS.has(v.id)) {
+          if (fig) fig.hidden = false;
+          img.removeAttribute("src");
+          fillCaption(cap, v);
+        } else {
+          img.removeAttribute("src");
+          if (fig) fig.hidden = true;
+        }
+      }
+      if (openId) {
+        const spec = visibleVars().find((v) => v.id === openId);
+        const use = frameForVar(fr, openId);
+        const src = frameSrc(fr, openId);
+        const lb = $("lb-img");
+        if (!src) {
+          closeLightbox();
+        } else {
+          lb.src = src;
+          const off = UPPER_IDS.has(openId) && use && use.lead !== fr.lead;
+          const parts = spec ? captionParts(spec, off ? hoursAhead(use.lead) : "") : { title: openId, sub: "" };
+          lb.alt = parts.title;
+          $("lb-cap").textContent = parts.title + (parts.sub ? " · " + parts.sub : "") + " · " + when;
+        }
+      }
+      preload(i - 1);
+      preload(i + 1);
+    }
+
+    function preload(j) {
+      if (!manifest || j < 0 || j >= manifest.frames.length) return;
+      const fr = manifest.frames[j];
+      for (const v of visibleVars()) {
+        const src = frameSrc(fr, v.id);
+        if (!src) continue;
+        const im = new Image();
+        im.src = src;
+      }
+    }
+
+    function step(d) {
+      i = (i + d + manifest.frames.length) % manifest.frames.length;
+      show();
+    }
+
+    function togglePlay() {
+      if (timer) {
+        clearInterval(timer);
+        timer = null;
+      } else {
+        timer = setInterval(() => step(1), 400);
+      }
+      const label = timer ? "Pause" : "Play";
+      $("play").textContent = label;
+      $("lb-play").textContent = label;
+    }
+
+    $("slider").addEventListener("input", (e) => {
+      i = Number(e.target.value);
+      show();
+    });
+    $("prev").addEventListener("click", () => step(-1));
+    $("next").addEventListener("click", () => step(1));
+    $("play").addEventListener("click", togglePlay);
+    $("now").addEventListener("click", goNow);
+    $("why").addEventListener("click", (e) => {
+      e.stopPropagation();
+      const box = $("why-box");
+      const open = !box.classList.contains("open");
+      box.classList.toggle("open", open);
+      $("why").setAttribute("aria-expanded", open ? "true" : "false");
+    });
+    document.addEventListener("click", () => {
+      $("why-box").classList.remove("open");
+      $("why").setAttribute("aria-expanded", "false");
+    });
+    $("aviation").addEventListener("change", () => {
+      setMeta();
+      buildFigures();
+    });
+    $("lb-prev").addEventListener("click", () => step(-1));
+    $("lb-next").addEventListener("click", () => step(1));
+    $("lb-play").addEventListener("click", togglePlay);
+    $("lb-x").addEventListener("click", closeLightbox);
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape" && openId) {
+        e.preventDefault();
+        closeLightbox();
+        return;
+      }
+      if (e.key === "ArrowLeft" || e.key === ",") { e.preventDefault(); step(-1); }
+      if (e.key === "ArrowRight" || e.key === ".") { e.preventDefault(); step(1); }
+      if (e.key === " ") { e.preventDefault(); togglePlay(); }
+      if (e.key === "n" || e.key === "N") { e.preventDefault(); goNow(); }
+      if (e.key === "Home") { e.preventDefault(); i = 0; show(); }
+      if (e.key === "End") {
+        e.preventDefault();
+        i = manifest.frames.length - 1;
+        show();
+      }
+    });
+
+    fetch("manifest.json?t=" + Date.now())
+      .then((r) => {
+        if (!r.ok) throw new Error("Run cook.py first (no manifest.json yet).");
+        return r.json();
+      })
+      .then((m) => {
+        manifest = m;
+        $("banner").textContent = m.disclaimer || "";
+        $("slider").max = String(Math.max(0, m.frames.length - 1));
+        i = closestNowIndex(m.frames);
+        setMeta();
+        buildFigures();
+        setInterval(() => {
+          fetch("manifest.json?t=" + Date.now())
+            .then((r) => r.json())
+            .then((next) => {
+              if (
+                next.generated === manifest.generated &&
+                next.init === manifest.init &&
+                next.synoptic_init === manifest.synoptic_init
+              ) return;
+              const lead = manifest.frames[i] && manifest.frames[i].lead;
+              const varsChanged = JSON.stringify(next.variables) !== JSON.stringify(manifest.variables);
+              const nFrames = manifest.frames.length;
+              manifest = next;
+              $("slider").max = String(Math.max(0, next.frames.length - 1));
+              const j = next.frames.findIndex((f) => f.lead === lead);
+              i = j >= 0 ? j : 0;
+              setMeta();
+              if (varsChanged || next.frames.length !== nFrames) buildFigures();
+              else show();
+            })
+            .catch(() => {});
+        }, 15000);
+      })
+      .catch((err) => {
+        $("meta").innerHTML = '<span class="err">' + err.message + "</span>";
+      });
+  </script>
+</body>
+</html>
