@@ -88,7 +88,9 @@ def main() -> None:
     assert cook.LAT0 == 40.0 and cook.LON0 == 225.0 and cook.FIG_SIZE[1] < 8
     cook.apply_domain("wide")
     assert cook.LAT0 == 10.0 and cook.LON1 == 300.0
-    from cook_ensemble import slp_marks
+    from pathlib import Path
+    from cook_ensemble import resolve_merge_init, slp_marks
+    assert resolve_merge_init("2026-09-26T06:00:00Z", Path("/tmp"), ["h500"]) == "2026-09-26T06:00:00Z"
     xx, yy = np.meshgrid(lon, lat)
     slp = 1020.0 + 0.2 * ((xx - 245.0) ** 2 + (yy - 35.0) ** 2)
     slp[10, 10] = 990.0

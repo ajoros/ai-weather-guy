@@ -145,6 +145,42 @@ def slp_marks(lon: np.ndarray, lat: np.ndarray, slp: np.ndarray) -> list:
     return lows + highs
 
 
+def _dropbox_retry(fn, tries: int = 5):
+    # ponytail: site/ is on Dropbox; errno 11 is the sync client, not a bad file.
+    last: Exception | None = None
+    for n in range(tries):
+        try:
+            return fn()
+        except OSError as exc:
+            last = exc
+            if getattr(exc, "errno", None) != 11 or n == tries - 1:
+                raise
+            time.sleep(0.5 * (n + 1))
+    raise last  # pragma: no cover
+
+
+def _read_stamp(path: Path) -> str:
+    return _dropbox_retry(lambda: path.read_text().strip())
+
+
+def resolve_merge_init(forced: str, out: Path, field_ids: list[str]) -> str:
+    """Use --init when we have it. Do not walk Dropbox stamps first — that can kill the run."""
+    if forced:
+        return forced
+    for fid in field_ids:
+        for hour in ensemble_leads():
+            st = out / f"frames/{fid}/f{hour:03d}.init"
+            if not st.exists():
+                continue
+            try:
+                got = _read_stamp(st)
+            except OSError:
+                continue
+            if got:
+                return got
+    return ""
+
+
 def _fresh(dest: Path, start: str) -> bool:
     stamp = dest.with_suffix(".init")
     try:
@@ -152,7 +188,7 @@ def _fresh(dest: Path, start: str) -> bool:
             dest.exists()
             and dest.stat().st_size > 1000
             and stamp.exists()
-            and stamp.read_text().strip() == start
+            and _read_stamp(stamp) == start
         )
     except OSError:
         return False
@@ -390,16 +426,7 @@ def main() -> None:
             print("COOK_STATUS=needed", flush=True)
         return
     if args.merge_only:
-        stamp_init = ""
-        for fid in field_ids:
-            for hour in ensemble_leads():
-                st = args.out / f"frames/{fid}/f{hour:03d}.init"
-                if st.exists():
-                    stamp_init = st.read_text().strip()
-                    break
-            if stamp_init:
-                break
-        init = args.init or stamp_init
+        init = resolve_merge_init(args.init, args.out, field_ids)
         if not init:
             sys.exit("merge-only needs --init or .init stamps")
         extra["ensemble_init"] = init

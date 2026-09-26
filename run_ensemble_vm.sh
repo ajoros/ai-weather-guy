@@ -115,13 +115,31 @@ cd /opt/wn3/src
   if [ -n "$batch_init" ]; then
     INIT=$batch_init
   fi
+  # scp into a non-Dropbox folder first. Writing straight into site/ hits errno 11
+  # and used to abort the whole upper-air publish.
+  STAGE="${HOME}/Library/Application Support/ai-weather-guy/ens-in"
+  pull_frames() {
+    remote="$1"
+    dest="$2"
+    mkdir -p "$STAGE/batch" "$dest"
+    rm -rf "$STAGE/batch"
+    mkdir -p "$STAGE/batch"
+    gcloud compute scp --recurse "$remote" "$STAGE/batch/" --zone="$ZONE" </dev/null || return 0
+    n=0
+    while [ "$n" -lt 5 ]; do
+      if cp -R "$STAGE/batch/." "$dest/"; then
+        return 0
+      fi
+      n=$((n + 1))
+      sleep $((n * 2))
+    done
+    echo "dropbox still busy copying $dest" >&2
+    return 0
+  }
   for fid in h500 t850 wind925 wind700 wind500 wind300; do
-    mkdir -p "$ROOT/site/pnw/frames/$fid"
-    gcloud compute scp --recurse "$NAME:/opt/wn3/pnw/frames/$fid/." "$ROOT/site/pnw/frames/$fid/" --zone="$ZONE" </dev/null || true
-    # Wide frames on this Mac are Dropbox placeholders. Copy them only when the local manifest is real.
+    pull_frames "$NAME:/opt/wn3/pnw/frames/$fid/." "$ROOT/site/pnw/frames/$fid"
     if [ -s "$ROOT/site/manifest.json" ]; then
-      mkdir -p "$ROOT/site/frames/$fid"
-      gcloud compute scp --recurse "$NAME:/opt/wn3/site/frames/$fid/." "$ROOT/site/frames/$fid/" --zone="$ZONE" </dev/null || true
+      pull_frames "$NAME:/opt/wn3/site/frames/$fid/." "$ROOT/site/frames/$fid"
     fi
   done
   while pgrep -f "cook_ee.py" >/dev/null 2>&1; do
