@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>AI-Weather-Guy — Runs</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600&display=swap" rel="stylesheet" />
+  <style>
+    :root { color-scheme: dark; }
+    body {
+      margin: 0;
+      font-family: "DM Sans", ui-sans-serif, system-ui, sans-serif;
+      background: #12151c;
+      color: #c8cdd6;
+    }
+    header {
+      display: flex; align-items: center; justify-content: space-between;
+      gap: 16px; padding: 14px 22px;
+      border-bottom: 1px solid #2a2f3a;
+    }
+    .brand { display: flex; align-items: center; gap: 12px; }
+    .logo { width: 40px; height: 40px; display: block; }
+    h1 { font-size: 18px; margin: 0; font-weight: 650; color: #eef1f6; letter-spacing: -0.02em; }
+    .sub { margin-top: 2px; font-size: 12px; color: #8b93a2; }
+    nav { display: flex; gap: 6px; }
+    nav a {
+      color: #c8cdd6; text-decoration: none; border: 1px solid #3a4150;
+      border-radius: 999px; padding: 6px 12px; font-size: 13px;
+    }
+    nav a:hover { border-color: #6ea8ff; color: #fff; }
+    nav a.on { background: #2f6fed; border-color: #2f6fed; color: #fff; }
+    .board { overflow: auto; padding: 18px 22px 48px; }
+    table { border-collapse: collapse; min-width: 960px; }
+    th, td { padding: 0; text-align: center; }
+    thead th {
+      font-size: 11px; font-weight: 500; color: #9aa3b2;
+      min-width: 36px; padding: 0 2px 10px;
+    }
+    thead th.day { color: #eef1f6; }
+    tbody th {
+      text-align: left; font-size: 13px; font-weight: 500;
+      color: #eef1f6; padding: 7px 16px 7px 0;
+      white-space: nowrap; position: sticky; left: 0;
+      background: #12151c;
+    }
+    td { height: 36px; border-top: 1px solid #1e2430; }
+    .dot {
+      width: 10px; height: 10px; border-radius: 50%;
+      background: #3d8bfd; display: inline-block; vertical-align: middle;
+    }
+    .dot.partial { width: 8px; height: 8px; background: #7eb3ff; }
+    .frac { display: block; font-size: 10px; color: #8b93a2; margin-top: 2px; white-space: nowrap; }
+    .err { color: #f2a0a0; padding: 24px; }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="brand">
+      <img class="logo" src="../logo-mark.png" width="40" height="40" alt="" />
+      <div>
+        <h1>Runs</h1>
+        <div class="sub" id="sub">Cooked inits in the last 24 hours</div>
+      </div>
+    </div>
+    <nav aria-label="Map region">
+      <a href="../">Wide</a>
+      <a href="../pnw/">Pacific Northwest</a>
+      <a class="on" href="./">Runs</a>
+    </nav>
+  </header>
+  <div class="board" id="board"></div>
+  <script>
+    const pad = (n) => String(n).padStart(2, "0");
+    function lastHours(n) {
+      const out = [];
+      const now = new Date();
+      now.setUTCMinutes(0, 0, 0);
+      for (let i = n - 1; i >= 0; i--) {
+        const t = new Date(now.getTime() - i * 3600000);
+        out.push({
+          iso: t.toISOString().replace(".000", ""),
+          hour: t.getUTCHours(),
+          day: t.getUTCDate(),
+          label: pad(t.getUTCHours()) + "Z",
+        });
+      }
+      return out;
+    }
+
+    fetch("status.json?t=" + Date.now())
+      .then((r) => {
+        if (!r.ok) throw new Error("No run status yet.");
+        return r.json();
+      })
+      .then((data) => {
+        const hours = lastHours(24);
+        const head = ["<th></th>"]
+          .concat(
+            hours.map((h, i) => {
+              const showDay = i === 0 || h.day !== hours[i - 1].day;
+              const label = showDay ? `${h.day}${th(h.day)} ${h.label}` : h.label;
+              return `<th class="${showDay ? "day" : ""}">${label}</th>`;
+            })
+          )
+          .join("");
+        const rows = (data.fields || [])
+          .map((f) => {
+            const tds = hours
+              .map((h) => {
+                const c = (f.inits || {})[h.iso];
+                if (!c || !c.n) return "<td></td>";
+                const full = c.want > 0 && c.n >= c.want;
+                const frac = full ? "" : `<span class="frac">${c.n} of ${c.want || "?"}</span>`;
+                return `<td><span class="dot${full ? "" : " partial"}" title="${h.label} ${c.n}/${c.want}"></span>${frac}</td>`;
+              })
+              .join("");
+            return `<tr><th>${f.label}</th>${tds}</tr>`;
+          })
+          .join("");
+        document.getElementById("board").innerHTML =
+          `<table><thead><tr>${head}</tr></thead><tbody>${rows}</tbody></table>`;
+        document.getElementById("sub").textContent =
+          "Cooked inits in the last 24 hours · dots are maps on disk";
+      })
+      .catch((err) => {
+        document.getElementById("board").innerHTML =
+          `<div class="err">${err.message}</div>`;
+      });
+
+    function th(d) {
+      const j = d % 10, k = d % 100;
+      if (j === 1 && k !== 11) return "st";
+      if (j === 2 && k !== 12) return "nd";
+      if (j === 3 && k !== 13) return "rd";
+      return "th";
+    }
+  </script>
+</body>
+</html>
