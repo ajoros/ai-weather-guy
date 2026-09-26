@@ -111,6 +111,57 @@ def synoptic_frames_current(old: dict, synoptic: str) -> bool:
     return bool(late) and all(fr.get("init") == synoptic for fr in late)
 
 
+def _dropbox_retry(fn, tries: int = 4):
+    # ponytail: Dropbox returns errno 11 (EDEADLK) on a busy file; retry beats a stuck run.
+    last: Exception | None = None
+    for n in range(tries):
+        try:
+            return fn()
+        except OSError as exc:
+            last = exc
+            if getattr(exc, "errno", None) != 11 or n == tries - 1:
+                raise
+            time.sleep(0.4 * (n + 1))
+    raise last  # pragma: no cover
+
+
+def read_stamp(path: Path) -> str:
+    return _dropbox_retry(lambda: path.read_text().strip())
+
+
+def write_stamp(path: Path, text: str) -> None:
+    _dropbox_retry(lambda: path.write_text(text))
+
+
+def frame_matches(out: Path, fid: str, hour: int, start: str) -> bool:
+    dest = out / f"frames/{fid}/f{hour:03d}.png"
+    stamp = dest.with_suffix(".init")
+    try:
+        return (
+            dest.exists()
+            and dest.stat().st_size > 1000
+            and stamp.exists()
+            and read_stamp(stamp) == start
+            and png_wide_enough(dest)
+        )
+    except OSError:
+        return False
+
+
+def stale_leads(
+    out: Path, field_ids: list[str], leads: list[int], hourly: str, synoptic: str
+) -> list[int]:
+    """Leads whose PNG is missing or stamped for a different init."""
+    return [
+        h
+        for h in leads
+        if any(
+            not frame_matches(out, fid, h, start_for_lead(h, hourly, synoptic))
+            for fid in field_ids
+        )
+    ]
+
+
 def has_forecast(col: ee.ImageCollection, start: str, hour: int) -> bool:
     n = (
         col.filter(ee.Filter.eq("start_time", start))
@@ -325,15 +376,18 @@ def fetch_one(start: str, hour: int, spec: tuple, dest: Path, force: bool) -> st
     fid, label, _var, _c, pal, _g, accum = spec
     stamp = dest.with_suffix(".init")
     # ponytail: sidecar so a leftover PNG cannot be relabeled as a newer init.
-    if (
-        dest.exists()
-        and dest.stat().st_size > 1000
-        and not force
-        and stamp.exists()
-        and stamp.read_text().strip() == start
-        and png_wide_enough(dest)
-    ):
-        return f"skip {fid} f{hour:03d}"
+    try:
+        if (
+            dest.exists()
+            and dest.stat().st_size > 1000
+            and not force
+            and stamp.exists()
+            and read_stamp(stamp) == start
+            and png_wide_enough(dest)
+        ):
+            return f"skip {fid} f{hour:03d}"
+    except OSError:
+        pass
     extra = f"  ({hour}h window)" if accum == 6 and hour < 6 else ""
     valid_dt = datetime.fromisoformat(start.replace("Z", "+00:00")) + timedelta(hours=hour)
     raw = dest.with_name(f"{dest.stem}.{os.getpid()}.ee.png")
@@ -406,7 +460,7 @@ def fetch_one(start: str, hour: int, spec: tuple, dest: Path, force: bool) -> st
     raw.unlink(missing_ok=True)
     if dest.stat().st_size < 1000:
         raise RuntimeError(f"tiny PNG {dest}")
-    stamp.write_text(start + "\n")
+    write_stamp(stamp, start + "\n")
     return f"ok {fid} f{hour:03d}"
 
 
@@ -453,32 +507,27 @@ def main() -> None:
         extra["ensemble_init"] = old["ensemble_init"]
     if old.get("ensemble_note"):
         extra["ensemble_note"] = old["ensemble_note"]
-    old_hourly = old.get("hourly_init") or old.get("init")
     targets = (
         [int(x) for x in args.leads.split(",") if x.strip()] if args.leads else display_leads()
     )
     targets = [h for h in targets if h <= long_h]
-    syn_ok = synoptic_frames_current(old, synoptic)
-    # ponytail: skip is init-based; a new CORE field would never cook. Ceiling:
-    # existence only, not stamp/width — fetch_one still recooks stale PNGs.
-    missing = any(
-        not (args.out / f"frames/{fid}/f{h:03d}.png").exists()
-        for fid in field_ids
-        for h in targets
-    )
-    if (
-        not args.leads
-        and not args.force
-        and old_hourly == hourly
-        and syn_ok
-        and not missing
-    ):
+    stale = stale_leads(args.out, field_ids, targets, hourly, synoptic)
+    if not args.leads and not args.force and not stale:
         print(f"already latest hourly {hourly} synoptic {synoptic}", flush=True)
         print("COOK_STATUS=noop", flush=True)
         return
-    if not args.leads and not args.force and syn_ok and not missing:
-        targets = [h for h in targets if h <= 48]
-        print(f"synoptic {synoptic} unchanged — recook F+1–48 from {hourly}", flush=True)
+    if not args.leads and not args.force:
+        targets = stale
+        if all(h <= 48 for h in stale):
+            print(
+                f"synoptic {synoptic} ok — recook {len(stale)} stale hourly frames from {hourly}",
+                flush=True,
+            )
+        else:
+            print(
+                f"recook {len(stale)} stale frames hourly={hourly} synoptic={synoptic}",
+                flush=True,
+            )
 
     print(
         f"EE hourly {hourly}  synoptic {synoptic}  fields {field_ids}  frames {len(targets)}",

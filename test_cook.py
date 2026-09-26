@@ -22,7 +22,13 @@ from cook import (
     WATERMARK,
     rel_vort_e5,
 )
-from cook_ee import MIN_PNG_W, start_for_lead, synoptic_frames_current
+from cook_ee import (
+    MIN_PNG_W,
+    frame_matches,
+    stale_leads,
+    start_for_lead,
+    synoptic_frames_current,
+)
 from serve_windy import lon360, parse_tile_path
 
 
@@ -92,6 +98,19 @@ def main() -> None:
     assert synoptic_frames_current(
         {"frames": [{"lead": 1, "init": "H"}, {"lead": 54, "init": "S"}]}, "S"
     )
+    from pathlib import Path
+    import tempfile
+    from PIL import Image
+    with tempfile.TemporaryDirectory(dir="/tmp") as tmp:
+        out = Path(tmp)
+        dest = out / "frames/slp/f001.png"
+        dest.parent.mkdir(parents=True)
+        Image.new("RGB", (1900, 400), (30, 80, 140)).save(dest)
+        dest.with_suffix(".init").write_text("H\n")
+        assert frame_matches(out, "slp", 1, "H")
+        assert not frame_matches(out, "slp", 1, "S")
+        assert stale_leads(out, ["slp"], [1, 54], "H", "S") == [54]
+        assert stale_leads(out, ["slp"], [1], "NEW", "S") == [1]
     assert lon360(-122.2) == 237.8
     assert lon360(200.0) == 200.0
     assert parse_tile_path("/ee/tiles/slp/54/5/4/10") == ("slp", 54, 5, 4, 10)
