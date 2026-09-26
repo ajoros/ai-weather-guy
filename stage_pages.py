@@ -67,6 +67,14 @@ def main() -> int:
     else:
         shutil.copy2(site / "index.html", dest / "index.html")
         print(f"skipped wide frames; {wide} is empty", flush=True)
+    runs_html = site / "runs" / "index.html"
+    if runs_html.is_file():
+        runs_dest = dest / "runs"
+        runs_dest.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(runs_html, runs_dest / "index.html")
+        status = site / "runs" / "status.json"
+        if status.is_file():
+            shutil.copy2(status, runs_dest / "status.json")
     pnw = site / "pnw" / "manifest.json"
     if pnw.is_file() and pnw.stat().st_size > 0:
         pnw_dest = dest / "pnw"

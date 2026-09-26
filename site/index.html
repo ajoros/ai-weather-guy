@@ -183,6 +183,7 @@
       <nav class="regions" aria-label="Map region">
         <a class="region on" id="reg-wide" href="./">Wide</a>
         <a class="region" id="reg-pnw" href="pnw/">Pacific Northwest</a>
+        <a class="region" id="reg-runs" href="runs/">Runs</a>
       </nav>
       <button id="prev" type="button">←</button>
       <button id="play" type="button">Play</button>
@@ -210,14 +211,17 @@
   <script>
     const $ = (id) => document.getElementById(id);
     const PNW = /\/pnw(\/|$)/.test(location.pathname);
+    const RUNS = /\/runs(\/|$)/.test(location.pathname);
+    const ROOT = PNW || RUNS ? "../" : "./";
+    $("reg-wide").href = ROOT;
+    $("reg-pnw").href = ROOT + "pnw/";
+    $("reg-runs").href = ROOT + "runs/";
     if (PNW) {
       document.title = "AI-Weather-Guy — Pacific Northwest";
       document.documentElement.style.setProperty("--map-ratio", "7 / 3");
       const logo = document.querySelector(".logo");
       if (logo) logo.src = "../logo-mark.png";
-      $("reg-wide").href = "../";
       $("reg-wide").classList.remove("on");
-      $("reg-pnw").href = "./";
       $("reg-pnw").classList.add("on");
     }
     const CLOUD_LAYERS = new Set(["cloud_low", "cloud_mid", "cloud_high"]);

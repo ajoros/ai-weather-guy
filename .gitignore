@@ -26,3 +26,6 @@ plots/
 
 # Local research notes — not the public repo
 WEATHERNEXT3_*.md
+
+# Regenerated from .init stamps at deploy
+site/runs/status.json

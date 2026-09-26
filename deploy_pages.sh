@@ -22,6 +22,7 @@ else
 fi
 
 echo "staging JPEGs from $SITE" >&2
+"$PY" "$ROOT/runs_status.py"
 "$PY" "$ROOT/stage_pages.py" "$SITE" "$WORK"
 if [ ! -s "$WORK/manifest.json" ]; then
   echo "published manifest is missing; refusing to replace the live site" >&2

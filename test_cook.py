@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Self-check: lead list is 100 frames and NWS palettes line up."""
 
+import json
 from datetime import datetime, timezone
 
 import cook
@@ -128,6 +129,37 @@ def main() -> None:
         assert not frame_matches(out, "slp", 1, "S")
         assert stale_leads(out, ["slp"], [1, 54], "H", "S") == [54]
         assert stale_leads(out, ["slp"], [1], "NEW", "S") == [1]
+    from runs_status import collect_runs, _want
+    assert _want("slp", set(range(1, 49))) == 48
+    assert _want("slp", set(range(54, 361, 6))) == 52
+    assert _want("h500", set(range(6, 361, 6))) == 60
+    with tempfile.TemporaryDirectory(dir="/tmp") as tmp:
+        root = Path(tmp)
+        (root / "manifest.json").write_text(
+            json.dumps(
+                {
+                    "frames": [
+                        {"lead": 1, "init": "2026-09-25T17:00:00Z", "files": {"slp": "x"}},
+                        {"lead": 2, "init": "2026-09-25T17:00:00Z", "files": {"slp": "x"}},
+                    ]
+                }
+            )
+        )
+        slp = next(f for f in collect_runs(root)["fields"] if f["id"] == "slp")
+        assert slp["inits"]["2026-09-25T17:00:00Z"] == {"n": 2, "want": 48}
+        (root / "manifest.json").write_text(
+            json.dumps(
+                {
+                    "frames": [
+                        {"lead": 6, "init": "2026-09-25T17:00:00Z", "files": {"h500": "x"}},
+                        {"lead": 6, "init": "2026-09-25T12:00:00Z", "files": {"h500": "x"}},
+                    ]
+                }
+            )
+        )
+        h500 = next(f for f in collect_runs(root)["fields"] if f["id"] == "h500")
+        assert "2026-09-25T17:00:00Z" not in h500["inits"]
+        assert h500["inits"]["2026-09-25T12:00:00Z"]["n"] == 1
     assert lon360(-122.2) == 237.8
     assert lon360(200.0) == 200.0
     assert parse_tile_path("/ee/tiles/slp/54/5/4/10") == ("slp", 54, 5, 4, 10)
