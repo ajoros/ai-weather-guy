@@ -3,6 +3,7 @@
 
 from datetime import datetime, timezone
 
+import cook
 from cook import (
     PALETTES,
     CORE_IDS,
@@ -70,6 +71,22 @@ def main() -> None:
     u = np.ones((21, 21))
     v = np.zeros((21, 21))
     assert abs(float(np.nanmean(rel_vort_e5(lon, lat, u, v)))) < 1.0
+    wlat, wlon = cook.DOMAINS["wide"]["lat"], cook.DOMAINS["wide"]["lon"]
+    plat, plonb = cook.DOMAINS["pnw"]["lat"], cook.DOMAINS["pnw"]["lon"]
+    assert wlat[0] <= plat[0] <= plat[1] <= wlat[1]
+    assert wlon[0] <= plonb[0] <= plonb[1] <= wlon[1]
+    assert plat == (40.0, 55.0) and plonb == (225.0, 260.0)
+    lon_g = np.linspace(120.0, 300.0, 181)
+    lat_g = np.linspace(75.0, 10.0, 66)
+    grid = np.arange(lat_g.size * lon_g.size).reshape(lat_g.size, lon_g.size)
+    slon, slat, sz = cook.subset_box(lon_g, lat_g, [grid], (*plat, *plonb))
+    assert slon[0] >= 225 and slon[-1] <= 260
+    assert float(slat.min()) >= 40 and float(slat.max()) <= 55
+    assert sz.shape == (slat.size, slon.size) and sz.size > 0
+    cook.apply_domain("pnw")
+    assert cook.LAT0 == 40.0 and cook.LON0 == 225.0 and cook.FIG_SIZE[1] < 8
+    cook.apply_domain("wide")
+    assert cook.LAT0 == 10.0 and cook.LON1 == 300.0
     from cook_ensemble import slp_marks
     xx, yy = np.meshgrid(lon, lat)
     slp = 1020.0 + 0.2 * ((xx - 245.0) ** 2 + (yy - 35.0) ** 2)

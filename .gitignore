@@ -7,6 +7,8 @@ __pycache__/
 # Cooked maps (~640 MB) and per-PNG init stamps
 site/frames/
 site/manifest.json
+site/pnw/frames/
+site/pnw/manifest.json
 
 # Local preview clips
 previews/

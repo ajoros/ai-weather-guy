@@ -7,6 +7,7 @@ and add the NWS colorbar. Same frames/manifest as cook.py.
     export GOOGLE_CLOUD_PROJECT=weathernext3-joros
     .venv/bin/python cook_ee.py
     .venv/bin/python cook_ee.py --fields core --leads 1,2,3
+    .venv/bin/python cook_ee.py --fields core --pnw-out site/pnw
     # default: latest hourly init for F+1–48, latest 15-day synoptic for F+54–360
 """
 
@@ -34,17 +35,15 @@ from google.auth.transport.requests import Request
 
 import ee
 
+import cook
 from cook import (
     FIELDS,
-    LAT0,
-    LAT1,
-    LON0,
-    LON1,
     PALETTES,
     SITE,
     accum_hours,
     display_leads,
     finish_map,
+    load_manifest,
     merge_manifest,
     parse_fields,
     plot_title,
@@ -52,8 +51,6 @@ from cook import (
 
 COL_01 = "projects/gcp-public-data-weathernext/assets/weathernext_3_0_0_0p1deg"
 COL_05 = "projects/gcp-public-data-weathernext/assets/weathernext_3_0_0_0p05deg"
-THUMB_W, THUMB_H = 2100, 759
-FIG_IN = (18.0, 8.52)
 FIG_DPI = 130
 # bbox-tight maps land ~2100px; reject only the tiny error thumbs.
 MIN_PNG_W = 1800
@@ -234,17 +231,27 @@ def paint_lines(rgb: ee.Image) -> ee.Image:
     return rgb.paint(countries, "111111", 1).paint(states, "444444", 1)
 
 
-def thumb_params() -> dict:
-    dx = (LON1 - LON0) / THUMB_W
-    dy = (LAT1 - LAT0) / THUMB_H
+def thumb_params(reg: dict) -> dict:
+    lat0, lat1 = reg["lat"]
+    lon0, lon1 = reg["lon"]
+    tw, th = reg["thumb"]
+    dx = (lon1 - lon0) / tw
+    dy = (lat1 - lat0) / th
     return {
-        "dimensions": [THUMB_W, THUMB_H],
+        "dimensions": [tw, th],
         "crs": "EPSG:4326",
         # ponytail: 0–360 strip so Pacific+NA is one image. If EE rejects
         # lon>180, stitch two -180/180 thumbs instead.
-        "crsTransform": [dx, 0, LON0, 0, -dy, LAT1],
+        "crsTransform": [dx, 0, lon0, 0, -dy, lat1],
         "format": "png",
     }
+
+
+def overlay_dx(reg: dict, kind: str) -> float:
+    span = reg["lon"][1] - reg["lon"][0]
+    if kind == "slp":
+        return 1.0 if span > 80 else 0.5
+    return 3.5 if span > 80 else 1.25
 
 
 def field_scalar(start: str, hour: int, spec: tuple) -> ee.Image:
@@ -279,9 +286,11 @@ def field_image(start: str, hour: int, spec: tuple) -> ee.Image:
     return paint_lines(rgb)
 
 
-def compute_grid(img: ee.Image, dx: float):
-    width = int(round((LON1 - LON0) / dx))
-    height = int(round((LAT1 - LAT0) / dx))
+def compute_grid(img: ee.Image, dx: float, reg: dict):
+    lat0, lat1 = reg["lat"]
+    lon0, lon1 = reg["lon"]
+    width = int(round((lon1 - lon0) / dx))
+    height = int(round((lat1 - lat0) / dx))
     arr = ee.data.computePixels(
         {
             "expression": img,
@@ -291,17 +300,17 @@ def compute_grid(img: ee.Image, dx: float):
                 "affineTransform": {
                     "scaleX": dx,
                     "shearX": 0,
-                    "translateX": LON0,
+                    "translateX": lon0,
                     "shearY": 0,
                     "scaleY": -dx,
-                    "translateY": LAT1,
+                    "translateY": lat1,
                 },
                 "crsCode": "EPSG:4326",
             },
         }
     )
-    lon = LON0 + (np.arange(width) + 0.5) * dx
-    lat = LAT1 - (np.arange(height) + 0.5) * dx
+    lon = lon0 + (np.arange(width) + 0.5) * dx
+    lat = lat1 - (np.arange(height) + 0.5) * dx
     return lon, lat, arr
 
 
@@ -319,14 +328,17 @@ def wrap_thumb(
     dest: Path,
     title: str,
     palette: str,
+    reg: dict,
     *,
     contours=None,
     barbs=None,
 ) -> None:
     pal = PALETTES[palette]
     arr = plt.imread(raw)
-    fig, ax = plt.subplots(figsize=FIG_IN, dpi=FIG_DPI)
-    ax.imshow(arr, extent=[LON0, LON1, LAT0, LAT1], origin="upper", aspect="auto")
+    lat0, lat1 = reg["lat"]
+    lon0, lon1 = reg["lon"]
+    fig, ax = plt.subplots(figsize=reg["fig"], dpi=FIG_DPI)
+    ax.imshow(arr, extent=[lon0, lon1, lat0, lat1], origin="upper", aspect="auto")
     if contours is not None:
         lon, lat, z = contours
         cs = ax.contour(
@@ -353,7 +365,7 @@ def wrap_thumb(
             barb_increments={"half": 5, "full": 10, "flag": 50},
         )
     ax.set_title(title, loc="left", fontsize=11)
-    ax.set_xlabel("longitude (0–360)", fontsize=8)
+    cook.format_lon_axis(ax, lon0, lon1)
     ax.set_ylabel("latitude", fontsize=8)
     ax.tick_params(labelsize=8)
     cmap = mcolors.ListedColormap(list(pal["colors"]))
@@ -372,7 +384,7 @@ def png_wide_enough(dest: Path) -> bool:
         return False
 
 
-def fetch_one(start: str, hour: int, spec: tuple, dest: Path, force: bool) -> str:
+def fetch_one(start: str, hour: int, spec: tuple, dest: Path, force: bool, reg: dict) -> str:
     fid, label, _var, _c, pal, _g, accum = spec
     stamp = dest.with_suffix(".init")
     # ponytail: sidecar so a leftover PNG cannot be relabeled as a newer init.
@@ -395,7 +407,7 @@ def fetch_one(start: str, hour: int, spec: tuple, dest: Path, force: bool) -> st
     last: Exception | None = None
     for n in range(6):
         try:
-            url = field_image(start, hour, spec).getThumbURL(thumb_params())
+            url = field_image(start, hour, spec).getThumbURL(thumb_params(reg))
             urllib.request.urlretrieve(url, raw)
             last = None
             break
@@ -418,7 +430,8 @@ def fetch_one(start: str, hour: int, spec: tuple, dest: Path, force: bool) -> st
             if fid == "slp":
                 lon, lat, grid = compute_grid(
                     hourly_01(start, hour).select("mean_sea_level_pressure_mean").divide(100.0),
-                    1.0,
+                    overlay_dx(reg, "slp"),
+                    reg,
                 )
                 contours = (lon, lat, np.asarray(grid["mean_sea_level_pressure_mean"]))
             elif fid == "wind10":
@@ -428,7 +441,8 @@ def fetch_one(start: str, hour: int, spec: tuple, dest: Path, force: bool) -> st
                         ["u_component_of_wind_10m_mean", "v_component_of_wind_10m_mean"]
                     )
                     .multiply(1.943844),  # m/s → kt
-                    3.5,
+                    overlay_dx(reg, "wind"),
+                    reg,
                 )
                 barbs = (
                     lon,
@@ -454,6 +468,7 @@ def fetch_one(start: str, hour: int, spec: tuple, dest: Path, force: bool) -> st
         dest,
         plot_title(label, note, valid_dt, start, hour),
         pal,
+        reg,
         contours=contours,
         barbs=barbs,
     )
@@ -474,6 +489,13 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--fields", default="core")
     p.add_argument("--leads", default="")
     p.add_argument("--out", type=Path, default=SITE)
+    p.add_argument("--domain", default="wide", choices=tuple(cook.DOMAINS))
+    p.add_argument(
+        "--pnw-out",
+        type=Path,
+        default=None,
+        help="also draw 40–55°N, 135–100°W into this directory",
+    )
     p.add_argument("--workers", type=int, default=8)
     p.add_argument("--force", action="store_true")
     return p.parse_args()
@@ -502,7 +524,7 @@ def main() -> None:
     }
 
     old_path = args.out / "manifest.json"
-    old = json.loads(old_path.read_text()) if old_path.exists() else {}
+    old = load_manifest(old_path) if old_path.exists() else {}
     if old.get("ensemble_init"):
         extra["ensemble_init"] = old["ensemble_init"]
     if old.get("ensemble_note"):
@@ -511,77 +533,83 @@ def main() -> None:
         [int(x) for x in args.leads.split(",") if x.strip()] if args.leads else display_leads()
     )
     targets = [h for h in targets if h <= long_h]
-    stale = stale_leads(args.out, field_ids, targets, hourly, synoptic)
-    if not args.leads and not args.force and not stale:
-        print(f"already latest hourly {hourly} synoptic {synoptic}", flush=True)
-        print("COOK_STATUS=noop", flush=True)
-        return
-    if not args.leads and not args.force:
-        targets = stale
-        if all(h <= 48 for h in stale):
-            print(
-                f"synoptic {synoptic} ok — recook {len(stale)} stale hourly frames from {hourly}",
-                flush=True,
-            )
-        else:
-            print(
-                f"recook {len(stale)} stale frames hourly={hourly} synoptic={synoptic}",
-                flush=True,
-            )
+    regions = [(args.out, cook.DOMAINS[args.domain])]
+    if args.pnw_out and args.domain != "pnw":
+        regions.append((args.pnw_out, cook.DOMAINS["pnw"]))
+    if args.leads or args.force:
+        wanted = {out: list(targets) for out, _reg in regions}
+    else:
+        wanted = {
+            out: stale_leads(out, field_ids, targets, hourly, synoptic) for out, _reg in regions
+        }
+        if not any(wanted.values()):
+            print(f"already latest hourly {hourly} synoptic {synoptic}", flush=True)
+            print("COOK_STATUS=noop", flush=True)
+            return
 
     print(
-        f"EE hourly {hourly}  synoptic {synoptic}  fields {field_ids}  frames {len(targets)}",
+        f"EE hourly {hourly}  synoptic {synoptic}  fields {field_ids}  "
+        f"outs {len(regions)}  frame-sets {sum(len(v) for v in wanted.values())}",
         flush=True,
     )
 
     jobs: list[tuple] = []
-    for hour in targets:
-        start = start_for_lead(hour, hourly, synoptic)
-        init_dt = datetime.fromisoformat(start.replace("Z", "+00:00"))
-        valid = (init_dt + timedelta(hours=hour)).strftime("%Y-%m-%dT%H:%M:%SZ")
-        for fid in field_ids:
-            rel = f"frames/{fid}/f{hour:03d}.png"
-            jobs.append(
-                (start, hour, valid, fid, FIELDS[fid], args.out / rel, args.force)
-            )
+    for out, reg in regions:
+        for hour in wanted[out]:
+            start = start_for_lead(hour, hourly, synoptic)
+            init_dt = datetime.fromisoformat(start.replace("Z", "+00:00"))
+            valid = (init_dt + timedelta(hours=hour)).strftime("%Y-%m-%dT%H:%M:%SZ")
+            for fid in field_ids:
+                rel = f"frames/{fid}/f{hour:03d}.png"
+                jobs.append(
+                    (start, hour, valid, fid, FIELDS[fid], out / rel, args.force, reg, out)
+                )
 
     # ponytail: one slider; F+1–48 and F+54–360 may be different inits.
-    # Ceiling: EE QPS; drop workers if 429s.
+    # Ceiling: EE QPS; drop workers if 429s. PNW is a second thumb of the same images.
     t0 = time.time()
-    done_hours: dict[int, dict] = {}
+    done_by: dict[Path, dict[int, dict]] = {out: {} for out, _reg in regions}
     source = f"earthengine:{COL_01} hourly={hourly} synoptic={synoptic}"
     with ThreadPoolExecutor(max_workers=args.workers) as pool:
         futs = {
-            pool.submit(fetch_one, start, hour, spec, dest, force): (
+            pool.submit(fetch_one, start, hour, spec, dest, force, reg): (
                 start,
                 hour,
                 valid,
                 fid,
+                reg,
+                out,
             )
-            for start, hour, valid, fid, spec, dest, force in jobs
+            for start, hour, valid, fid, spec, dest, force, reg, out in jobs
         }
         n = 0
         for fut in as_completed(futs):
-            start, hour, valid, fid = futs[fut]
+            start, hour, valid, fid, reg, out = futs[fut]
             msg = fut.result()
             n += 1
-            done_hours.setdefault(
-                hour, {"lead": hour, "valid": valid, "init": start, "files": {}}
-            )
-            done_hours[hour]["files"][fid] = f"frames/{fid}/f{hour:03d}.png"
+            done = done_by[out]
+            done.setdefault(hour, {"lead": hour, "valid": valid, "init": start, "files": {}})
+            done[hour]["files"][fid] = f"frames/{fid}/f{hour:03d}.png"
+            extra_out = extra
+            if reg["name"] == "pnw":
+                extra_out = {
+                    **extra,
+                    "domain": {"lat": list(reg["lat"]), "lon_360": list(reg["lon"])},
+                    "note": extra["note"] + " Pacific Northwest: 40–55°N, 135–100°W.",
+                }
             merge_manifest(
-                args.out,
+                out,
                 run=run,
                 init=hourly,
                 source=source,
                 new_ids=field_ids,
-                done_hours=done_hours,
-                extra=extra,
+                done_hours=done,
+                extra=extra_out,
             )
             print(f"  {msg}  {n}/{len(jobs)}  {time.time() - t0:.0f}s", flush=True)
 
-    assert done_hours, "no frames"
-    print(f"manifest {args.out / 'manifest.json'}  n={len(done_hours)}  {time.time() - t0:.0f}s")
+    assert any(done_by.values()), "no frames"
+    print(f"manifest {args.out / 'manifest.json'}  {time.time() - t0:.0f}s")
     print("COOK_STATUS=updated", flush=True)
 
 

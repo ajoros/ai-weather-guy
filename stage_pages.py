@@ -12,12 +12,18 @@ from pathlib import Path
 from PIL import Image
 
 
-def stage(site: Path, dest: Path) -> int:
+def stage(site: Path, dest: Path, *, root: bool = True) -> int:
     dest.mkdir(parents=True, exist_ok=True)
     shutil.copy2(site / "index.html", dest / "index.html")
-    shutil.copy2(site / "logo-mark.png", dest / "logo-mark.png")
-    (dest / ".nojekyll").write_text("", encoding="utf-8")
-    m = json.loads((site / "manifest.json").read_text(encoding="utf-8"))
+    if root:
+        logo = site / "logo-mark.png"
+        if logo.is_file():
+            shutil.copy2(logo, dest / "logo-mark.png")
+        (dest / ".nojekyll").write_text("", encoding="utf-8")
+    manifest_path = site / "manifest.json"
+    if manifest_path.stat().st_size == 0:
+        raise SystemExit(f"{manifest_path} is an empty placeholder")
+    m = json.loads(manifest_path.read_text(encoding="utf-8"))
     keep = {v["id"] for v in m.get("variables") or []}
     for fr in m.get("frames", []):
         files = fr.get("files") or {}
@@ -51,7 +57,22 @@ def main() -> int:
     if len(sys.argv) != 3:
         print("usage: stage_pages.py SITE_DIR DEST_DIR", file=sys.stderr)
         return 2
-    n = stage(Path(sys.argv[1]), Path(sys.argv[2]))
+    site = Path(sys.argv[1])
+    dest = Path(sys.argv[2])
+    dest.mkdir(parents=True, exist_ok=True)
+    n = 0
+    wide = site / "manifest.json"
+    if wide.is_file() and wide.stat().st_size > 0:
+        n += stage(site, dest, root=True)
+    else:
+        shutil.copy2(site / "index.html", dest / "index.html")
+        print(f"skipped wide frames; {wide} is empty", flush=True)
+    pnw = site / "pnw" / "manifest.json"
+    if pnw.is_file() and pnw.stat().st_size > 0:
+        pnw_dest = dest / "pnw"
+        if pnw_dest.exists():
+            shutil.rmtree(pnw_dest)
+        n += stage(site / "pnw", pnw_dest, root=False)
     print(f"converted {n} maps", flush=True)
     return 0
 

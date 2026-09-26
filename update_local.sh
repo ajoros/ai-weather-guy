@@ -42,7 +42,7 @@ print(
 EE_OK=1
 {
   echo "==== $(date -u +%Y-%m-%dT%H:%M:%SZ) ===="
-  "$ROOT/.venv/bin/python" "$ROOT/cook_ee.py" --workers 8 --fields core
+  "$ROOT/.venv/bin/python" "$ROOT/cook_ee.py" --workers 8 --fields core --pnw-out "$ROOT/site/pnw"
 } > "$LOG" 2>&1 || EE_OK=0
 {
   echo "==== ensemble $(date -u +%Y-%m-%dT%H:%M:%SZ) ===="

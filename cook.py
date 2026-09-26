@@ -38,9 +38,56 @@ from plot_wn3_stats import (
     open_stats,
 )
 
-LAT0, LAT1 = 10.0, 75.0
-LON0, LON1 = 120.0, 300.0  # 120E–60W
+# wide: North America + northern Pacific. pnw: 40–55°N, 135–100°W.
+DOMAINS = {
+    "wide": {
+        "name": "wide",
+        "lat": (10.0, 75.0),
+        "lon": (120.0, 300.0),
+        "fig": (18.0, 8.52),
+        "thumb": (2100, 759),
+    },
+    "pnw": {
+        "name": "pnw",
+        "lat": (40.0, 55.0),
+        "lon": (225.0, 260.0),
+        "fig": (18.0, 7.71),
+        "thumb": (2100, 900),
+    },
+}
+LAT0, LAT1 = DOMAINS["wide"]["lat"]
+LON0, LON1 = DOMAINS["wide"]["lon"]
+FIG_SIZE = DOMAINS["wide"]["fig"]
 CACHE = Path(__file__).resolve().parent / ".cache" / "naturalearth"
+
+
+def apply_domain(name: str) -> dict:
+    """Point coastlines and map axes at a named window."""
+    global LAT0, LAT1, LON0, LON1, FIG_SIZE
+    if name not in DOMAINS:
+        raise SystemExit(f"unknown domain {name}; known: {list(DOMAINS)}")
+    reg = DOMAINS[name]
+    LAT0, LAT1 = reg["lat"]
+    LON0, LON1 = reg["lon"]
+    FIG_SIZE = reg["fig"]
+    return reg
+
+
+def subset_box(lon, lat, arrays, box):
+    """Slice monotonic 1d lon/lat fields to an inclusive box. No second download."""
+    lat0, lat1, lon0, lon1 = box
+    lon = np.asarray(lon)
+    lat = np.asarray(lat)
+    ii = np.flatnonzero((lat >= lat0) & (lat <= lat1))
+    jj = np.flatnonzero((lon >= lon0) & (lon <= lon1))
+    if ii.size == 0 or jj.size == 0:
+        raise ValueError(f"empty subset {box}")
+    i0, i1 = int(ii.min()), int(ii.max()) + 1
+    j0, j1 = int(jj.min()), int(jj.max()) + 1
+    out = [lon[j0:j1], lat[i0:i1]]
+    for arr in arrays:
+        out.append(np.asarray(arr)[i0:i1, j0:j1])
+    return out
 SITE = Path(__file__).resolve().parent / "site"
 
 NE_FILES = {
@@ -572,14 +619,15 @@ def _iter_rings(geom: dict):
             yield poly[0]
 
 
-_NE_CACHE: list[tuple[np.ndarray, np.ndarray, dict]] | None = None
+_NE_CACHE: dict[tuple[float, float, float, float], list[tuple[np.ndarray, np.ndarray, dict]]] = {}
 
 
 def _ne_lines() -> list[tuple[np.ndarray, np.ndarray, dict]]:
-    # ponytail: parse NE once; re-reading 50m geojson per PNG is the slow part.
-    global _NE_CACHE
-    if _NE_CACHE is not None:
-        return _NE_CACHE
+    # ponytail: parse NE once per domain; re-reading 50m geojson per PNG is the slow part.
+    key = (float(LAT0), float(LAT1), float(LON0), float(LON1))
+    hit = _NE_CACHE.get(key)
+    if hit is not None:
+        return hit
     layers = (
         ("lakes", dict(color="0.45", lw=0.3, alpha=0.8)),
         ("coast", dict(color="0.12", lw=0.55)),
@@ -608,8 +656,19 @@ def _ne_lines() -> list[tuple[np.ndarray, np.ndarray, dict]]:
                 if np.nanmax(lon) < LON0 or np.nanmin(lon) > LON1:
                     continue
                 out.append((lon, lat, kw))
-    _NE_CACHE = out
+    _NE_CACHE[key] = out
     return out
+
+
+def format_lon_axis(ax, lon0: float, lon1: float) -> None:
+    # Narrow west-longitude window (the PNW page). The wide map stays 0–360.
+    if lon0 < 180 or (lon1 - lon0) > 80:
+        ax.set_xlabel("longitude (0–360)", fontsize=8)
+        return
+    ticks = np.arange(np.ceil(lon0 / 5.0) * 5.0, lon1 + 0.01, 5.0)
+    ax.set_xticks(ticks)
+    ax.set_xticklabels([f"{int(round(360 - t))}°W" for t in ticks])
+    ax.set_xlabel("longitude", fontsize=8)
 
 
 WATERMARK = (
@@ -683,7 +742,7 @@ def save_map(
     cmap.set_under(pal["colors"][0])
     cmap.set_over(pal["colors"][-1])
     norm = mcolors.BoundaryNorm(pal["bounds"], cmap.N, clip=False)
-    fig, ax = plt.subplots(figsize=(18.0, 8.52), dpi=130)
+    fig, ax = plt.subplots(figsize=FIG_SIZE, dpi=130)
     ax.set_xlim(LON0, LON1)
     ax.set_ylim(LAT0, LAT1)
     pcm = ax.pcolormesh(lon, lat, data, cmap=cmap, norm=norm, shading="nearest", zorder=1)
@@ -740,7 +799,7 @@ def save_map(
             ax.text(x, y, kind, color=color, fontsize=12, fontweight="bold", ha="center", va="center", zorder=5)
             ax.text(x, y - 1.8, f"{val:.0f}", color=color, fontsize=7, ha="center", va="top", zorder=5)
     ax.tick_params(labelsize=8)
-    ax.set_xlabel("longitude (0–360)", fontsize=8)
+    format_lon_axis(ax, LON0, LON1)
     ax.set_ylabel("latitude", fontsize=8)
     ax.set_title(title, loc="left", fontsize=11)
     finish_map(fig, ax, pcm, pal, path)
@@ -802,6 +861,16 @@ def page_field_ids(old: dict, incoming: list[str]) -> list[str]:
     return [i for i in PAGE_IDS if i in want]
 
 
+def load_manifest(path: Path) -> dict:
+    if not path.exists():
+        return {"variables": [], "frames": []}
+    if path.stat().st_size == 0:
+        raise SystemExit(
+            f"{path} is an empty placeholder. Make that file available offline before cooking."
+        )
+    return json.loads(path.read_text())
+
+
 def merge_manifest(
     out: Path,
     *,
@@ -814,7 +883,7 @@ def merge_manifest(
     keep_clock: bool = False,
 ) -> list[dict]:
     path = out / "manifest.json"
-    old = json.loads(path.read_text()) if path.exists() else {"variables": [], "frames": []}
+    old = load_manifest(path)
     ids = page_field_ids(old, new_ids)
     by_lead = {fr["lead"]: fr for fr in old.get("frames", [])}
     for hour, fr in done_hours.items():

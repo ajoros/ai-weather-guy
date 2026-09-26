@@ -24,6 +24,7 @@ import obstore
 import xarray as xr
 import zarr
 
+import cook
 from cook import (
     ENSEMBLE_IDS,
     FIELDS,
@@ -36,6 +37,7 @@ from cook import (
     display_leads,
     hours_since,
     k_to_c,
+    load_manifest,
     merge_manifest,
     ms_to_kt,
     page_field_ids,
@@ -143,15 +145,32 @@ def slp_marks(lon: np.ndarray, lat: np.ndarray, slp: np.ndarray) -> list:
     return lows + highs
 
 
-def plot_one(ds: xr.Dataset, start: str, hour: int, fid: str, dest: Path, members: int, force: bool) -> str:
+def _fresh(dest: Path, start: str) -> bool:
     stamp = dest.with_suffix(".init")
-    if (
-        dest.exists()
-        and dest.stat().st_size > 1000
-        and not force
-        and stamp.exists()
-        and stamp.read_text().strip() == start
-    ):
+    try:
+        return (
+            dest.exists()
+            and dest.stat().st_size > 1000
+            and stamp.exists()
+            and stamp.read_text().strip() == start
+        )
+    except OSError:
+        return False
+
+
+def plot_one(
+    ds: xr.Dataset,
+    start: str,
+    hour: int,
+    fid: str,
+    dest: Path,
+    members: int,
+    force: bool,
+    pnw_dest: Path | None = None,
+) -> str:
+    need_wide = force or not _fresh(dest, start)
+    need_pnw = pnw_dest is not None and (force or not _fresh(pnw_dest, start))
+    if not need_wide and not need_pnw:
         return f"skip {fid} f{hour:03d}"
     spec = FIELDS[fid]
     label, pal = spec[1], spec[4]
@@ -192,24 +211,69 @@ def plot_one(ds: xr.Dataset, start: str, hour: int, fid: str, dest: Path, member
             contour_z = phi_to_dam(np.asarray(h))
             contours = np.arange(468, 613, 6)
             note += " + 500H 6 dam"
-    save_map(
-        dest,
-        lon,
-        lat,
-        z,
-        title=plot_title(label, note, valid_dt, start, hour),
-        palette=pal,
-        contours=contours,
-        contour_data=contour_z,
-        contour_color=contour_color,
-        contour_label_color=contour_label_color,
-        barbs=barbs,
-        streamlines=streamlines,
-        marks=marks,
-    )
-    if dest.stat().st_size < 1000:
-        raise RuntimeError(f"tiny PNG {dest}")
-    stamp.write_text(start + "\n")
+    title = plot_title(label, note, valid_dt, start, hour)
+    if need_wide:
+        save_map(
+            dest,
+            lon,
+            lat,
+            z,
+            title=title,
+            palette=pal,
+            contours=contours,
+            contour_data=contour_z,
+            contour_color=contour_color,
+            contour_label_color=contour_label_color,
+            barbs=barbs,
+            streamlines=streamlines,
+            marks=marks,
+        )
+        if dest.stat().st_size < 1000:
+            raise RuntimeError(f"tiny PNG {dest}")
+        dest.with_suffix(".init").write_text(start + "\n")
+    if need_pnw and pnw_dest is not None:
+        # Same loaded arrays. Chunks are global, so a second .load() would re-read them.
+        reg = cook.DOMAINS["pnw"]
+        box = (*reg["lat"], *reg["lon"])
+        arrays = [z]
+        if contour_z is not None:
+            arrays.append(contour_z)
+        if barbs is not None:
+            arrays.extend([barbs[2], barbs[3]])
+        parts = cook.subset_box(lon, lat, arrays, box)
+        plon, plat = parts[0], parts[1]
+        idx = 2
+        pz = parts[idx]
+        idx += 1
+        pz_c = None
+        if contour_z is not None:
+            pz_c = parts[idx]
+            idx += 1
+        pbarbs = None
+        if barbs is not None:
+            pbarbs = (plon, plat, parts[idx], parts[idx + 1])
+        cook.apply_domain("pnw")
+        try:
+            save_map(
+                pnw_dest,
+                plon,
+                plat,
+                pz,
+                title=title,
+                palette=pal,
+                contours=contours,
+                contour_data=pz_c,
+                contour_color=contour_color,
+                contour_label_color=contour_label_color,
+                barbs=pbarbs,
+                streamlines=streamlines,
+                marks=marks,
+            )
+        finally:
+            cook.apply_domain("wide")
+        if pnw_dest.stat().st_size < 1000:
+            raise RuntimeError(f"tiny PNG {pnw_dest}")
+        pnw_dest.with_suffix(".init").write_text(start + "\n")
     return f"ok {fid} f{hour:03d}"
 
 
@@ -229,7 +293,7 @@ def merge_from_disk(out: Path, field_ids: list[str], init: str, extra: dict) -> 
             datetime.fromisoformat(init.replace("Z", "+00:00")) + timedelta(hours=hour)
         ).strftime("%Y-%m-%dT%H:%M:%SZ")
         done[hour] = {"lead": hour, "valid": valid, "init": init, "files": files}
-    old = json.loads((out / "manifest.json").read_text()) if (out / "manifest.json").exists() else {}
+    old = load_manifest(out / "manifest.json") if (out / "manifest.json").exists() else {}
     extra = {
         "hourly_init": old.get("hourly_init") or old.get("init") or init,
         "synoptic_init": old.get("synoptic_init") or init,
@@ -254,12 +318,42 @@ def merge_from_disk(out: Path, field_ids: list[str], init: str, extra: dict) -> 
     )
 
 
+def read_manifest_or_empty(path: Path) -> dict:
+    """Empty Dropbox placeholders are missing manifests, not a reason to abort."""
+    try:
+        return load_manifest(path) if path.exists() else {}
+    except SystemExit:
+        return {}
+
+
+def _pngs_ready(out: Path, field_ids: list[str], leads: list[int]) -> bool:
+    return all((out / f"frames/{fid}/f{h:03d}.png").exists() for fid in field_ids for h in leads)
+
+
+def _pnw_extra(extra: dict) -> dict:
+    reg = cook.DOMAINS["pnw"]
+    note = extra.get("note") or "Maps only — no downloadable grids."
+    if "Pacific Northwest" not in note:
+        note += " Pacific Northwest: 40–55°N, 135–100°W."
+    return {
+        **extra,
+        "domain": {"lat": list(reg["lat"]), "lon_360": list(reg["lon"])},
+        "note": note,
+    }
+
+
 def parse_args() -> argparse.Namespace:
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--init", default="", help="ISO init UTC; default = latest synoptic ensemble")
     p.add_argument("--fields", default="ensemble")
     p.add_argument("--leads", default="")
     p.add_argument("--out", type=Path, default=SITE)
+    p.add_argument(
+        "--pnw-out",
+        type=Path,
+        default=None,
+        help="also draw 40–55°N, 135–100°W from the arrays already loaded",
+    )
     p.add_argument("--members", type=int, default=64)
     p.add_argument("--force", action="store_true")
     p.add_argument("--merge-only", action="store_true")
@@ -284,11 +378,11 @@ def main() -> None:
             sys.exit("Set GOOGLE_CLOUD_PROJECT.")
         _p, ds, init = latest_ens(project_id)
         ds.close()
-        old = json.loads((args.out / "manifest.json").read_text()) if (args.out / "manifest.json").exists() else {}
+        old = read_manifest_or_empty(args.out / "manifest.json")
         leads = ensemble_leads()
-        have = all(
-            (args.out / f"frames/{fid}/f{h:03d}.png").exists() for fid in field_ids for h in leads
-        )
+        have = _pngs_ready(args.out, field_ids, leads)
+        if args.pnw_out:
+            have = have and _pngs_ready(args.pnw_out, field_ids, leads)
         print(f"ENSEMBLE_INIT={init}", flush=True)
         if old.get("ensemble_init") == init and have and not args.force:
             print("COOK_STATUS=noop", flush=True)
@@ -309,6 +403,8 @@ def main() -> None:
         if not init:
             sys.exit("merge-only needs --init or .init stamps")
         extra["ensemble_init"] = init
+        if args.out.name == "pnw":
+            extra = _pnw_extra(extra)
         merge_from_disk(args.out, field_ids, init, extra)
         print("COOK_STATUS=updated", flush=True)
         return
@@ -325,18 +421,17 @@ def main() -> None:
     else:
         _prefix, ds, init = latest_ens(project_id)
     extra["ensemble_init"] = init
+    print(f"ENSEMBLE_INIT={init}", flush=True)
     old_path = args.out / "manifest.json"
-    old = json.loads(old_path.read_text()) if old_path.exists() else {}
+    old = read_manifest_or_empty(old_path)
     leads = (
         [int(x) for x in args.leads.split(",") if x.strip()] if args.leads else ensemble_leads()
     )
     leads = [h for h in leads if h in set(ensemble_leads())]
-    if (
-        not args.force
-        and not args.leads
-        and old.get("ensemble_init") == init
-        and all((args.out / f"frames/{fid}/f{h:03d}.png").exists() for fid in field_ids for h in leads)
-    ):
+    ready = _pngs_ready(args.out, field_ids, leads)
+    if args.pnw_out:
+        ready = ready and _pngs_ready(args.pnw_out, field_ids, leads)
+    if not args.force and not args.leads and old.get("ensemble_init") == init and ready:
         print(f"already latest ensemble {init}", flush=True)
         print("COOK_STATUS=noop", flush=True)
         ds.close()
@@ -352,10 +447,15 @@ def main() -> None:
     for hour in leads:
         for fid in field_ids:
             dest = args.out / f"frames/{fid}/f{hour:03d}.png"
-            msg = plot_one(ds, init, hour, fid, dest, args.members, args.force)
+            pnw_dest = (
+                args.pnw_out / f"frames/{fid}/f{hour:03d}.png" if args.pnw_out else None
+            )
+            msg = plot_one(ds, init, hour, fid, dest, args.members, args.force, pnw_dest)
             n += 1
             print(f"  {msg}  {n}/{jobs}  {time.time() - t0:.0f}s", flush=True)
         merge_from_disk(args.out, field_ids, init, extra)
+        if args.pnw_out:
+            merge_from_disk(args.pnw_out, field_ids, init, _pnw_extra(extra))
     ds.close()
     print(f"manifest {args.out / 'manifest.json'}  {time.time() - t0:.0f}s", flush=True)
     print("COOK_STATUS=updated", flush=True)

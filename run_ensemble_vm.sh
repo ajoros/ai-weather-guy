@@ -1,6 +1,7 @@
 #!/bin/sh
 # Start the us-east1 cook VM, render 64-mean upper air, copy PNGs home, stop the VM.
 set -e
+set -o pipefail
 ROOT="$(CDPATH= cd -- "$(dirname "$0")" && pwd)"
 PROJECT="${GOOGLE_CLOUD_PROJECT:-weathernext3-joros}"
 ZONE="${WN3_ENS_ZONE:-us-east1-b}"
@@ -10,8 +11,13 @@ export GOOGLE_CLOUD_PROJECT="$PROJECT"
 
 gcloud() { command gcloud --project="$PROJECT" "$@"; }
 
+PY="$ROOT/.venv/bin/python"
+if ! "$PY" -c "import matplotlib; matplotlib.use('Agg')" >/dev/null 2>&1; then
+  PY="$HOME/.venvs/weathernext3/bin/python"
+fi
+
 if [ -z "${WN3_ENS_ARGS:-}" ]; then
-  CHECK="$("$ROOT/.venv/bin/python" "$ROOT/cook_ensemble.py" --check --out "$ROOT/site" || true)"
+  CHECK="$("$PY" "$ROOT/cook_ensemble.py" --check --out "$ROOT/site" --pnw-out "$ROOT/site/pnw" || true)"
   echo "$CHECK"
   if echo "$CHECK" | grep -q '^COOK_STATUS=noop$'; then
     echo "COOK_STATUS=noop"
@@ -68,8 +74,8 @@ if [ ! -x /opt/wn3/.venv/bin/python ]; then
   sudo python3 -m venv /opt/wn3/.venv
   sudo /opt/wn3/.venv/bin/pip install -q xarray zarr obstore matplotlib numpy google-auth dask[array]
 fi
-sudo mkdir -p /opt/wn3/src /opt/wn3/site /opt/wn3/cred
-sudo chown -R \$(id -un):\$(id -gn) /opt/wn3/src /opt/wn3/site /opt/wn3/cred
+sudo mkdir -p /opt/wn3/src /opt/wn3/site /opt/wn3/pnw /opt/wn3/cred
+sudo chown -R \$(id -un):\$(id -gn) /opt/wn3/src /opt/wn3/site /opt/wn3/pnw /opt/wn3/cred
 "
 
 ADC="$HOME/.config/gcloud/application_default_credentials.json"
@@ -82,21 +88,58 @@ gcloud compute scp \
   "$ROOT/cook_ensemble.py" "$ROOT/cook.py" "$ROOT/plot_wn3_stats.py" \
   "$NAME:/opt/wn3/src/" --zone="$ZONE"
 
-gcloud compute ssh "$NAME" --zone="$ZONE" --command="
+# One lead first so the PNW page shows upper air, then the rest in batches.
+BATCHES=$("$PY" -c "
+leads=list(range(6,361,6))
+chunks=[[leads[0]]]+[leads[i:i+6] for i in range(1,len(leads),6)]
+print('\n'.join(','.join(map(str,c)) for c in chunks))
+")
+
+: > "$ROOT/.cache/ensemble-cook.log"
+updated=0
+INIT=""
+while IFS= read -r leads; do
+  [ -n "$leads" ] || continue
+  echo "ensemble batch $leads" >&2
+  gcloud compute ssh "$NAME" --zone="$ZONE" --command="
 set -e
 export GOOGLE_CLOUD_PROJECT=$PROJECT
 export GOOGLE_APPLICATION_CREDENTIALS=/opt/wn3/cred/adc.json
 cd /opt/wn3/src
-/opt/wn3/.venv/bin/python cook_ensemble.py --out /opt/wn3/site --members 64 ${WN3_ENS_ARGS:-}
-" | tee "$ROOT/.cache/ensemble-cook.log"
-if ! grep -q '^COOK_STATUS=updated$' "$ROOT/.cache/ensemble-cook.log"; then
+/opt/wn3/.venv/bin/python cook_ensemble.py --out /opt/wn3/site --pnw-out /opt/wn3/pnw --members 64 --leads $leads ${WN3_ENS_ARGS:-}
+" </dev/null | tee -a "$ROOT/.cache/ensemble-cook.log"
+  if grep -q '^COOK_STATUS=updated$' "$ROOT/.cache/ensemble-cook.log"; then
+    updated=1
+  fi
+  batch_init=$(sed -n 's/^ENSEMBLE_INIT=//p' "$ROOT/.cache/ensemble-cook.log" | tail -1)
+  if [ -n "$batch_init" ]; then
+    INIT=$batch_init
+  fi
+  for fid in h500 t850 wind925 wind700 wind500 wind300; do
+    mkdir -p "$ROOT/site/pnw/frames/$fid"
+    gcloud compute scp --recurse "$NAME:/opt/wn3/pnw/frames/$fid/." "$ROOT/site/pnw/frames/$fid/" --zone="$ZONE" </dev/null || true
+    # Wide frames on this Mac are Dropbox placeholders. Copy them only when the local manifest is real.
+    if [ -s "$ROOT/site/manifest.json" ]; then
+      mkdir -p "$ROOT/site/frames/$fid"
+      gcloud compute scp --recurse "$NAME:/opt/wn3/site/frames/$fid/." "$ROOT/site/frames/$fid/" --zone="$ZONE" </dev/null || true
+    fi
+  done
+  while pgrep -f "cook_ee.py" >/dev/null 2>&1; do
+    echo "waiting for surface cook before manifest merge" >&2
+    sleep 5
+  done
+  if [ -n "$INIT" ] && [ -s "$ROOT/site/pnw/manifest.json" ]; then
+    "$PY" "$ROOT/cook_ensemble.py" --merge-only --out "$ROOT/site/pnw" --init "$INIT"
+  fi
+done <<EOF
+$BATCHES
+EOF
+
+if [ "$updated" != 1 ]; then
   echo "COOK_STATUS=noop"
   exit 0
 fi
-
-for fid in h500 t850 wind925 wind700 wind500 wind300; do
-  mkdir -p "$ROOT/site/frames/$fid"
-  gcloud compute scp --recurse "$NAME:/opt/wn3/site/frames/$fid/." "$ROOT/site/frames/$fid/" --zone="$ZONE" || true
-done
-
-"$ROOT/.venv/bin/python" "$ROOT/cook_ensemble.py" --merge-only --out "$ROOT/site"
+if [ -s "$ROOT/site/manifest.json" ] && [ -n "$INIT" ]; then
+  "$PY" "$ROOT/cook_ensemble.py" --merge-only --out "$ROOT/site" --init "$INIT"
+fi
+echo "COOK_STATUS=updated"
