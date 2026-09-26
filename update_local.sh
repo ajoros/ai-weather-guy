@@ -9,6 +9,20 @@ cd "$ROOT"
 mkdir -p "$ROOT/.cache"
 LOG="$ROOT/.cache/cook-latest.log"
 DEPLOYED="$ROOT/.cache/deployed_inits"
+# ponytail: mkdir lock so LaunchAgent + a manual run cannot double-start
+# the VM or race two orphan gh-pages pushes. Stale dir if the pid is gone.
+LOCKDIR="$ROOT/.cache/update.lockdir"
+if ! mkdir "$LOCKDIR" 2>/dev/null; then
+  oldpid=$(cat "$LOCKDIR/pid" 2>/dev/null || true)
+  if [ -n "$oldpid" ] && kill -0 "$oldpid" 2>/dev/null; then
+    echo "update already running (pid $oldpid)" >&2
+    exit 0
+  fi
+  rm -rf "$LOCKDIR"
+  mkdir "$LOCKDIR"
+fi
+echo $$ > "$LOCKDIR/pid"
+trap 'rm -rf "$LOCKDIR"' EXIT INT TERM
 
 inits_now() {
   "$ROOT/.venv/bin/python" -c '
