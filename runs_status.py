@@ -5,7 +5,7 @@ from __future__ import annotations
 
 import json
 from collections import defaultdict
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 
 from cook import ENSEMBLE_IDS, FIELDS, PAGE_IDS, SITE
@@ -91,6 +91,39 @@ def _merge(
     return merged
 
 
+KEEP_H = 36
+
+
+def _age_h(iso: str, now: datetime) -> float:
+    try:
+        dt = datetime.fromisoformat(iso.replace("Z", "+00:00"))
+    except ValueError:
+        return 1e9
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    return (now - dt).total_seconds() / 3600.0
+
+
+def merge_log(prev: dict, current: dict, now: datetime | None = None) -> dict:
+    """Keep older inits after maps are overwritten. Drop anything older than KEEP_H."""
+    now = now or datetime.now(timezone.utc)
+    prev_by = {f["id"]: f.get("inits") or {} for f in prev.get("fields") or []}
+    fields = []
+    for f in current.get("fields") or []:
+        cells = dict(prev_by.get(f["id"]) or {})
+        for init, cell in (f.get("inits") or {}).items():
+            old = cells.get(init)
+            if old is None or cell.get("n", 0) >= old.get("n", 0):
+                cells[init] = {"n": cell["n"], "want": cell["want"]}
+        cells = {
+            init: cell
+            for init, cell in cells.items()
+            if _age_h(init, now) <= KEEP_H
+        }
+        fields.append({**f, "inits": cells})
+    return {"fields": fields}
+
+
 def collect_runs(site: Path) -> dict:
     wide = scan_manifest(site / "manifest.json")
     pnw = site / "pnw" / "manifest.json"
@@ -110,8 +143,19 @@ def collect_runs(site: Path) -> dict:
 
 def write_status(site: Path = SITE) -> Path:
     dest = site / "runs" / "status.json"
+    log = site / "runs" / "log.json"
     dest.parent.mkdir(parents=True, exist_ok=True)
-    dest.write_text(json.dumps(collect_runs(site), indent=2) + "\n", encoding="utf-8")
+    current = collect_runs(site)
+    prev = {"fields": []}
+    if log.is_file() and log.stat().st_size:
+        try:
+            prev = json.loads(log.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            prev = {"fields": []}
+    data = merge_log(prev, current)
+    text = json.dumps(data, indent=2) + "\n"
+    dest.write_text(text, encoding="utf-8")
+    log.write_text(text, encoding="utf-8")
     return dest
 
 

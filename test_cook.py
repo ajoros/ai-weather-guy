@@ -160,6 +160,31 @@ def main() -> None:
         h500 = next(f for f in collect_runs(root)["fields"] if f["id"] == "h500")
         assert "2026-09-25T17:00:00Z" not in h500["inits"]
         assert h500["inits"]["2026-09-25T12:00:00Z"]["n"] == 1
+        from runs_status import merge_log
+        now = datetime(2026, 9, 26, 12, 0, tzinfo=timezone.utc)
+        kept = merge_log(
+            {
+                "fields": [
+                    {
+                        "id": "slp",
+                        "label": "SLP",
+                        "inits": {"2026-09-26T10:00:00Z": {"n": 48, "want": 48}},
+                    }
+                ]
+            },
+            {
+                "fields": [
+                    {
+                        "id": "slp",
+                        "label": "SLP",
+                        "inits": {"2026-09-26T11:00:00Z": {"n": 48, "want": 48}},
+                    }
+                ]
+            },
+            now,
+        )
+        slp_log = next(f for f in kept["fields"] if f["id"] == "slp")["inits"]
+        assert "2026-09-26T10:00:00Z" in slp_log and "2026-09-26T11:00:00Z" in slp_log
     assert lon360(-122.2) == 237.8
     assert lon360(200.0) == 200.0
     assert parse_tile_path("/ee/tiles/slp/54/5/4/10") == ("slp", 54, 5, 4, 10)
