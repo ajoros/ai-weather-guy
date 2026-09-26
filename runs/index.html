@@ -61,7 +61,7 @@
       <img class="logo" src="../logo-mark.png" width="40" height="40" alt="" />
       <div>
         <h1>Runs</h1>
-        <div class="sub" id="sub">Cooked inits in the last 24 hours</div>
+        <div class="sub" id="sub">Each hourly and 6-hourly init we finished in the last 24 hours</div>
       </div>
     </div>
     <nav aria-label="Map region">
@@ -80,7 +80,7 @@
       for (let i = n - 1; i >= 0; i--) {
         const t = new Date(now.getTime() - i * 3600000);
         out.push({
-          iso: t.toISOString().replace(".000", ""),
+          iso: t.toISOString().slice(0, 19) + "Z",
           hour: t.getUTCHours(),
           day: t.getUTCDate(),
           label: pad(t.getUTCHours()) + "Z",
@@ -122,7 +122,7 @@
         document.getElementById("board").innerHTML =
           `<table><thead><tr>${head}</tr></thead><tbody>${rows}</tbody></table>`;
         document.getElementById("sub").textContent =
-          "Cooked inits in the last 24 hours · dots are maps on disk";
+          "Empty hours were not a complete Google run yet, or we have not cooked them. Hourly dots stay after the maps move on.";
       })
       .catch((err) => {
         document.getElementById("board").innerHTML =
