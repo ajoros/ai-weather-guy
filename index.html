@@ -387,8 +387,13 @@
       return bits.length ? "Model run in progress: " + bits.join(" · ") : "";
     }
 
-    function hoursAhead(lead) {
-      return lead === 1 ? "1 hour ahead" : lead + " hours ahead";
+    function fmtValidZ(iso) {
+      const d = new Date(iso);
+      if (Number.isNaN(d.getTime())) return iso;
+      const wd = d.toLocaleString("en-US", { timeZone: "UTC", weekday: "short" });
+      const mon = d.toLocaleString("en-US", { timeZone: "UTC", month: "short" });
+      const day = d.toLocaleString("en-US", { timeZone: "UTC", day: "numeric" });
+      return "valid time " + String(d.getUTCHours()).padStart(2, "0") + "Z " + wd + " " + mon + " " + day;
     }
 
     function closestNowIndex(frames) {
@@ -491,7 +496,6 @@
       const fr = manifest.frames[i];
       const init = fr.init || manifest.init;
       $("lead").textContent = "+" + fr.lead + "h";
-      const when = fmtWhen(fr.valid);
       $("clock").textContent = fmtRunZ(init);
       $("meta").textContent = fmtLocalValid(fr.valid, fr.lead);
       const prog = progressLine(fr);
@@ -505,15 +509,14 @@
         const src = frameSrc(fr, v.id);
         const fig = img.closest("figure");
         const cap = fig && fig.querySelector("figcaption");
-        const off = UPPER_IDS.has(v.id) && use && use.lead !== fr.lead;
         if (src) {
           if (fig) fig.hidden = false;
           img.src = src;
-          fillCaption(cap, v, off ? hoursAhead(use.lead) : "");
+          fillCaption(cap, v, fmtValidZ(use.valid || fr.valid));
         } else if (UPPER_IDS.has(v.id)) {
           if (fig) fig.hidden = false;
           img.removeAttribute("src");
-          fillCaption(cap, v);
+          fillCaption(cap, v, fmtValidZ(fr.valid));
         } else {
           img.removeAttribute("src");
           if (fig) fig.hidden = true;
@@ -528,10 +531,9 @@
           closeLightbox();
         } else {
           lb.src = src;
-          const off = UPPER_IDS.has(openId) && use && use.lead !== fr.lead;
-          const parts = spec ? captionParts(spec, off ? hoursAhead(use.lead) : "") : { title: openId, sub: "" };
+          const parts = spec ? captionParts(spec, fmtValidZ(use.valid || fr.valid)) : { title: openId, sub: "" };
           lb.alt = parts.title;
-          $("lb-cap").textContent = parts.title + (parts.sub ? " · " + parts.sub : "") + " · " + when;
+          $("lb-cap").textContent = parts.title + (parts.sub ? " · " + parts.sub : "");
         }
       }
       preload(i - 1);
