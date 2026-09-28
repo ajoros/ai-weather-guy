@@ -33,8 +33,11 @@
     .byline a { color: #3d5afe; text-decoration: none; }
     .byline a:hover { text-decoration: underline; }
     .when { flex: 1; text-align: center; min-width: 0; }
-    .clock { font-size: 20px; font-weight: 650; letter-spacing: -0.02em; margin: 0; }
-    .meta { color: #5f6368; font-size: 13px; margin-top: 2px; }
+    .run-lab, .fc-lab { font-size: 11px; font-weight: 650; letter-spacing: 0.04em; color: #5f6368; }
+    .fc-lab { margin-top: 6px; }
+    .clock { font-size: 22px; font-weight: 700; letter-spacing: -0.02em; margin: 0; }
+    .meta { color: #0b0c10; font-size: 15px; font-weight: 550; margin-top: 2px; }
+    .progress { color: #1a237e; font-size: 12px; margin-top: 4px; }
     .wn3-box { position: relative; text-align: right; flex-shrink: 0; }
     .wn3 { font-size: 13px; font-weight: 650; color: #0b0c10; }
     .wn3-sub { margin-top: 2px; font-size: 12px; color: #5f6368; }
@@ -161,8 +164,11 @@
         </div>
       </div>
       <div class="when">
+        <div class="run-lab">RUN TIME</div>
         <div class="clock" id="clock"></div>
-        <div class="meta" id="meta">Loading manifest…</div>
+        <div class="fc-lab">FORECAST TIME (LOCAL)</div>
+        <div class="meta" id="meta">Loading…</div>
+        <div class="progress" id="progress" hidden></div>
       </div>
       <div class="wn3-box" id="why-box">
         <div class="wn3">WeatherNext 3</div>
@@ -225,7 +231,11 @@
       $("reg-pnw").classList.add("on");
     }
     const CLOUD_LAYERS = new Set(["cloud_low", "cloud_mid", "cloud_high"]);
+    const CORE_IDS = ["station_t", "qpf1_imerg", "qpf_acc", "slp", "wind10", "wind10_p90"];
     const UPPER_IDS = new Set(["h500", "t850", "wind925", "wind700", "wind500", "wind300"]);
+    const HOURLY_LEADS = Array.from({ length: 48 }, (_, n) => n + 1);
+    const SYN_LEADS = Array.from({ length: 52 }, (_, n) => 54 + n * 6);
+    const ENS_LEADS = Array.from({ length: 60 }, (_, n) => 6 + n * 6);
     const CAPTIONS = {
       station_t: {
         title: "Temperature near the ground",
@@ -324,11 +334,57 @@
         " · " + pt.h + pt.ap + " " + pt.tz;
     }
 
-    function fmtInitShort(iso) {
+    function fmtRunZ(iso) {
       const d = new Date(iso);
       if (Number.isNaN(d.getTime())) return iso;
-      const pt = ptParts(d);
-      return pt.h + pt.ap + " " + pt.tz;
+      const mon = d.toLocaleString("en-US", { timeZone: "UTC", month: "short" }).toUpperCase();
+      const day = d.toLocaleString("en-US", { timeZone: "UTC", day: "numeric" });
+      return String(d.getUTCHours()).padStart(2, "0") + "Z " + mon + " " + day;
+    }
+
+    function fmtLocalValid(iso, lead) {
+      const d = new Date(iso);
+      if (Number.isNaN(d.getTime())) return iso;
+      const parts = new Intl.DateTimeFormat("en-US", {
+        timeZone: "America/Los_Angeles",
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: true,
+        month: "short",
+        day: "numeric",
+      }).formatToParts(d);
+      const pick = (t) => (parts.find((p) => p.type === t) || {}).value || "";
+      const ap = pick("dayPeriod").toUpperCase().replace(/\./g, "");
+      return "(+" + lead + " hour) " + pick("hour") + ":" + pick("minute") + ap + " " +
+        pick("month") + " " + pick("day");
+    }
+
+    function countAt(leads, ids, initWant) {
+      const byLead = {};
+      for (const fr of manifest.frames) byLead[fr.lead] = fr;
+      let n = 0;
+      for (const h of leads) {
+        const fr = byLead[h];
+        if (!fr || (initWant && fr.init && fr.init !== initWant)) continue;
+        for (const id of ids) {
+          if (fr.files && fr.files[id]) n += 1;
+        }
+      }
+      return { n, want: leads.length * ids.length };
+    }
+
+    function progressLine(fr) {
+      const bits = [];
+      if (fr.lead <= 48) {
+        const s = countAt(HOURLY_LEADS, CORE_IDS, fr.init);
+        if (s.n < s.want) bits.push("Hourly " + s.n + "/" + s.want);
+      } else {
+        const s = countAt(SYN_LEADS, CORE_IDS, fr.init);
+        if (s.n < s.want) bits.push("6-hourly " + s.n + "/" + s.want);
+      }
+      const u = countAt(ENS_LEADS, [...UPPER_IDS], "");
+      if (u.n < u.want) bits.push("Upper air " + u.n + "/" + u.want);
+      return bits.length ? "Model run in progress: " + bits.join(" · ") : "";
     }
 
     function hoursAhead(lead) {
@@ -436,8 +492,11 @@
       const init = fr.init || manifest.init;
       $("lead").textContent = "+" + fr.lead + "h";
       const when = fmtWhen(fr.valid);
-      $("clock").textContent = when;
-      $("meta").textContent = hoursAhead(fr.lead) + " · forecast started " + fmtInitShort(init);
+      $("clock").textContent = fmtRunZ(init);
+      $("meta").textContent = fmtLocalValid(fr.valid, fr.lead);
+      const prog = progressLine(fr);
+      $("progress").hidden = !prog;
+      $("progress").textContent = prog;
       $("slider").value = String(i);
       for (const v of visibleVars()) {
         const img = $("img-" + v.id);
