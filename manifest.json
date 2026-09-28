@@ -1,6 +1,6 @@
 {
-  "run": "20260926_17hr_01_preds",
-  "init": "2026-09-26T17:00:00Z",
+  "run": "20260927_22hr_01_preds",
+  "init": "2026-09-27T22:00:00Z",
   "domain": {
     "lat": [
       10.0,
@@ -11,7 +11,7 @@
       300.0
     ]
   },
-  "source": "earthengine:projects/gcp-public-data-weathernext/assets/weathernext_3_0_0_0p1deg hourly=2026-09-26T17:00:00Z synoptic=2026-09-26T12:00:00Z",
+  "source": "earthengine:projects/gcp-public-data-weathernext/assets/weathernext_3_0_0_0p1deg hourly=2026-09-27T22:00:00Z synoptic=2026-09-27T18:00:00Z",
   "note": "F+1\u201348 from latest hourly init (interim or synoptic). F+54\u2013360 from latest 15-day synoptic. Maps only \u2014 no downloadable grids.",
   "disclaimer": "WeatherNext 3 experimental research data. Not an official forecast, watch, or warning, and not NWS. Do not use for life-and-property decisions.",
   "keys": "\u2190 \u2192 step time \u00b7 space play \u00b7 Home/End ends",
@@ -77,11 +77,11 @@
       "units": "kt"
     }
   ],
-  "generated": "2026-09-27T00:16:13Z",
+  "generated": "2026-09-28T04:41:41Z",
   "frames": [
     {
       "lead": 1,
-      "valid": "2026-09-26T18:00:00Z",
+      "valid": "2026-09-27T23:00:00Z",
       "files": {
         "station_t": "frames/station_t/f001.jpg",
         "wind10": "frames/wind10/f001.jpg",
@@ -90,11 +90,11 @@
         "qpf_acc": "frames/qpf_acc/f001.jpg",
         "wind10_p90": "frames/wind10_p90/f001.jpg"
       },
-      "init": "2026-09-26T17:00:00Z"
+      "init": "2026-09-27T22:00:00Z"
     },
     {
       "lead": 2,
-      "valid": "2026-09-26T19:00:00Z",
+      "valid": "2026-09-28T00:00:00Z",
       "files": {
         "station_t": "frames/station_t/f002.jpg",
         "wind10": "frames/wind10/f002.jpg",
@@ -103,7 +103,7 @@
         "qpf_acc": "frames/qpf_acc/f002.jpg",
         "wind10_p90": "frames/wind10_p90/f002.jpg"
       },
-      "init": "2026-09-26T17:00:00Z"
+      "init": "2026-09-27T22:00:00Z"
     },
     {
       "lead": 3,
@@ -1740,8 +1740,8 @@
       "init": "2026-09-26T12:00:00Z"
     }
   ],
-  "hourly_init": "2026-09-26T17:00:00Z",
-  "synoptic_init": "2026-09-26T12:00:00Z",
+  "hourly_init": "2026-09-27T22:00:00Z",
+  "synoptic_init": "2026-09-27T18:00:00Z",
   "ensemble_init": "2026-09-26T12:00:00Z",
   "ensemble_note": "Upper air is the 64-member mean from the ensemble Zarr, 6-hourly synoptic inits only (not the free stats mean)."
 }
