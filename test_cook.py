@@ -76,16 +76,17 @@ def main() -> None:
     plat, plonb = cook.DOMAINS["pnw"]["lat"], cook.DOMAINS["pnw"]["lon"]
     assert wlat[0] <= plat[0] <= plat[1] <= wlat[1]
     assert wlon[0] <= plonb[0] <= plonb[1] <= wlon[1]
-    assert plat == (40.0, 55.0) and plonb == (225.0, 260.0)
+    assert plat == (40.0, 55.0) and plonb == (215.0, 250.0)
+    assert cook.domain_box_label(cook.DOMAINS["pnw"]) == "40–55°N, 145–110°W"
     lon_g = np.linspace(120.0, 300.0, 181)
     lat_g = np.linspace(75.0, 10.0, 66)
     grid = np.arange(lat_g.size * lon_g.size).reshape(lat_g.size, lon_g.size)
     slon, slat, sz = cook.subset_box(lon_g, lat_g, [grid], (*plat, *plonb))
-    assert slon[0] >= 225 and slon[-1] <= 260
+    assert slon[0] >= 215 and slon[-1] <= 250
     assert float(slat.min()) >= 40 and float(slat.max()) <= 55
     assert sz.shape == (slat.size, slon.size) and sz.size > 0
     cook.apply_domain("pnw")
-    assert cook.LAT0 == 40.0 and cook.LON0 == 225.0 and cook.FIG_SIZE[1] < 8
+    assert cook.LAT0 == 40.0 and cook.LON0 == 215.0 and cook.FIG_SIZE[1] < 8
     cook.apply_domain("wide")
     assert cook.LAT0 == 10.0 and cook.LON1 == 300.0
     from pathlib import Path
@@ -196,6 +197,29 @@ def main() -> None:
     from pathlib import Path
     import tempfile
     from PIL import Image
+
+    n = {"i": 0}
+
+    def flaky():
+        n["i"] += 1
+        if n["i"] < 3:
+            raise OSError(11, "Resource deadlock avoided")
+        return 7
+
+    assert cook.dropbox_retry(flaky) == 7
+    with tempfile.TemporaryDirectory() as pub:
+        dest = Path(pub) / "stamp.txt"
+        cook.write_text_publish(dest, "ok\n")
+        assert dest.read_text() == "ok\n"
+        cook.write_manifest(
+            Path(pub),
+            run="t",
+            init="2026-09-28T00:00:00Z",
+            source="t",
+            field_ids=["slp"],
+            frames=[],
+        )
+        assert (Path(pub) / "manifest.json").stat().st_size > 10
     lon = np.linspace(120.0, 300.0, 36)
     lat = np.linspace(10.0, 75.0, 24)
     data = np.broadcast_to(lat[:, None], (24, 36))

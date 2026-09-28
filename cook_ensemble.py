@@ -35,6 +35,7 @@ from cook import (
     SITE,
     WIND_LEVEL,
     display_leads,
+    dropbox_retry,
     hours_since,
     k_to_c,
     load_manifest,
@@ -46,6 +47,10 @@ from cook import (
     plot_title,
     save_map,
 )
+
+
+class DropboxBusy(RuntimeError):
+    """Newest ensemble prefix is locked; do not walk to an older run."""
 
 ENS_BUCKET = "weathernext3_spatial"
 ENS_ROOT = "weathernext_3_0_0/zarr/2026_to_present"
@@ -75,19 +80,30 @@ def open_ens(prefix: str, project_id: str) -> xr.Dataset:
 def latest_ens(project_id: str) -> tuple[str, xr.Dataset, str]:
     last: Exception | None = None
     for prefix in ens_prefixes():
-        try:
-            ds = open_ens(prefix, project_id)
-            _ = ds.init_time.values
-            leads = [hours_since(v) for v in ds.lead_time.values]
-            if max(leads) < 300:
-                ds.close()
-                continue
-            init = np.datetime64(ds.init_time.values, "s")
-            init_s = str(init) + "Z"
-            return prefix, ds, init_s
-        except Exception as exc:
-            last = exc
-            print(f"skip {prefix}: {exc}", file=sys.stderr, flush=True)
+        for n in range(6):
+            try:
+                ds = open_ens(prefix, project_id)
+                _ = ds.init_time.values
+                leads = [hours_since(v) for v in ds.lead_time.values]
+                if max(leads) < 300:
+                    ds.close()
+                    break
+                init = np.datetime64(ds.init_time.values, "s")
+                init_s = str(init) + "Z"
+                return prefix, ds, init_s
+            except OSError as exc:
+                last = exc
+                if getattr(exc, "errno", None) == 11:
+                    if n < 5:
+                        time.sleep(0.5 * (n + 1))
+                        continue
+                    raise DropboxBusy(f"Dropbox busy opening {prefix}") from exc
+                print(f"skip {prefix}: {exc}", file=sys.stderr, flush=True)
+                break
+            except Exception as exc:
+                last = exc
+                print(f"skip {prefix}: {exc}", file=sys.stderr, flush=True)
+                break
     raise SystemExit(f"Could not open ensemble synoptic Zarr. Last error: {last}")
 
 
@@ -145,22 +161,8 @@ def slp_marks(lon: np.ndarray, lat: np.ndarray, slp: np.ndarray) -> list:
     return lows + highs
 
 
-def _dropbox_retry(fn, tries: int = 5):
-    # ponytail: site/ is on Dropbox; errno 11 is the sync client, not a bad file.
-    last: Exception | None = None
-    for n in range(tries):
-        try:
-            return fn()
-        except OSError as exc:
-            last = exc
-            if getattr(exc, "errno", None) != 11 or n == tries - 1:
-                raise
-            time.sleep(0.5 * (n + 1))
-    raise last  # pragma: no cover
-
-
 def _read_stamp(path: Path) -> str:
-    return _dropbox_retry(lambda: path.read_text().strip())
+    return dropbox_retry(lambda: path.read_text().strip())
 
 
 def resolve_merge_init(forced: str, out: Path, field_ids: list[str]) -> str:
@@ -203,9 +205,10 @@ def plot_one(
     members: int,
     force: bool,
     pnw_dest: Path | None = None,
+    pnw_force: bool = False,
 ) -> str:
     need_wide = force or not _fresh(dest, start)
-    need_pnw = pnw_dest is not None and (force or not _fresh(pnw_dest, start))
+    need_pnw = pnw_dest is not None and (force or pnw_force or not _fresh(pnw_dest, start))
     if not need_wide and not need_pnw:
         return f"skip {fid} f{hour:03d}"
     spec = FIELDS[fid]
@@ -358,7 +361,7 @@ def read_manifest_or_empty(path: Path) -> dict:
     """Empty Dropbox placeholders are missing manifests, not a reason to abort."""
     try:
         return load_manifest(path) if path.exists() else {}
-    except SystemExit:
+    except (SystemExit, OSError):
         return {}
 
 
@@ -369,8 +372,9 @@ def _pngs_ready(out: Path, field_ids: list[str], leads: list[int]) -> bool:
 def _pnw_extra(extra: dict) -> dict:
     reg = cook.DOMAINS["pnw"]
     note = extra.get("note") or "Maps only — no downloadable grids."
-    if "Pacific Northwest" not in note:
-        note += " Pacific Northwest: 40–55°N, 135–100°W."
+    if " Pacific Northwest:" in note:
+        note = note.split(" Pacific Northwest:")[0]
+    note = f"{note} Pacific Northwest: {cook.domain_box_label(reg)}."
     return {
         **extra,
         "domain": {"lat": list(reg["lat"]), "lon_360": list(reg["lon"])},
@@ -388,7 +392,7 @@ def parse_args() -> argparse.Namespace:
         "--pnw-out",
         type=Path,
         default=None,
-        help="also draw 40–55°N, 135–100°W from the arrays already loaded",
+        help="also draw the pnw domain (40–55°N, 145–110°W) from the arrays already loaded",
     )
     p.add_argument("--members", type=int, default=64)
     p.add_argument("--force", action="store_true")
@@ -412,13 +416,23 @@ def main() -> None:
         project_id = os.environ.get("GOOGLE_CLOUD_PROJECT") or os.environ.get("GCP_PROJECT")
         if not project_id:
             sys.exit("Set GOOGLE_CLOUD_PROJECT.")
-        _p, ds, init = latest_ens(project_id)
+        try:
+            _p, ds, init = latest_ens(project_id)
+        except DropboxBusy as exc:
+            print("COOK_STATUS=noop", flush=True)
+            print(f"dropbox busy: {exc}", flush=True)
+            return
         ds.close()
         old = read_manifest_or_empty(args.out / "manifest.json")
         leads = ensemble_leads()
         have = _pngs_ready(args.out, field_ids, leads)
         if args.pnw_out:
-            have = have and _pngs_ready(args.pnw_out, field_ids, leads)
+            pnw_old = read_manifest_or_empty(args.pnw_out / "manifest.json")
+            have = (
+                have
+                and _pngs_ready(args.pnw_out, field_ids, leads)
+                and cook.domain_matches_manifest(pnw_old, cook.DOMAINS["pnw"])
+            )
         print(f"ENSEMBLE_INIT={init}", flush=True)
         if old.get("ensemble_init") == init and have and not args.force:
             print("COOK_STATUS=noop", flush=True)
@@ -446,7 +460,10 @@ def main() -> None:
         ds = open_ens(f"{ENS_ROOT}/{tag}/predictions.zarr", project_id)
         init = args.init
     else:
-        _prefix, ds, init = latest_ens(project_id)
+        try:
+            _prefix, ds, init = latest_ens(project_id)
+        except DropboxBusy as exc:
+            sys.exit(f"dropbox busy: {exc}")
     extra["ensemble_init"] = init
     print(f"ENSEMBLE_INIT={init}", flush=True)
     old_path = args.out / "manifest.json"
@@ -456,8 +473,11 @@ def main() -> None:
     )
     leads = [h for h in leads if h in set(ensemble_leads())]
     ready = _pngs_ready(args.out, field_ids, leads)
+    pnw_force = args.force
     if args.pnw_out:
-        ready = ready and _pngs_ready(args.pnw_out, field_ids, leads)
+        pnw_old = read_manifest_or_empty(args.pnw_out / "manifest.json")
+        pnw_force = pnw_force or not cook.domain_matches_manifest(pnw_old, cook.DOMAINS["pnw"])
+        ready = ready and _pngs_ready(args.pnw_out, field_ids, leads) and not pnw_force
     if not args.force and not args.leads and old.get("ensemble_init") == init and ready:
         print(f"already latest ensemble {init}", flush=True)
         print("COOK_STATUS=noop", flush=True)
@@ -477,7 +497,9 @@ def main() -> None:
             pnw_dest = (
                 args.pnw_out / f"frames/{fid}/f{hour:03d}.png" if args.pnw_out else None
             )
-            msg = plot_one(ds, init, hour, fid, dest, args.members, args.force, pnw_dest)
+            msg = plot_one(
+                ds, init, hour, fid, dest, args.members, args.force, pnw_dest, pnw_force
+            )
             n += 1
             print(f"  {msg}  {n}/{jobs}  {time.time() - t0:.0f}s", flush=True)
         merge_from_disk(args.out, field_ids, init, extra)

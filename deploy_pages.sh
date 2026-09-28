@@ -9,9 +9,29 @@ PY="$ROOT/.venv/bin/python"
 if ! "$PY" -c "import PIL.Image" >/dev/null 2>&1; then
   PY="$HOME/.venvs/weathernext3/bin/python"
 fi
+# Wait if another publish is mid-push. Do not start a second clone.
+DEPLOCK="$ROOT/.cache/deploy.lockdir"
+mkdir -p "$ROOT/.cache"
+n=0
+while ! mkdir "$DEPLOCK" 2>/dev/null; do
+  oldpid=$(cat "$DEPLOCK/pid" 2>/dev/null || true)
+  if [ -n "$oldpid" ] && ! kill -0 "$oldpid" 2>/dev/null; then
+    rm -rf "$DEPLOCK"
+    continue
+  fi
+  n=$((n + 1))
+  if [ "$n" -gt 60 ]; then
+    echo "deploy already running; giving up" >&2
+    exit 1
+  fi
+  echo "waiting for other deploy ($n)" >&2
+  sleep 5
+done
+echo $$ > "$DEPLOCK/pid"
+
 STAGE="$(mktemp -d "${TMPDIR:-/tmp}/wn3-pages.XXXXXX")"
 WORK="$STAGE/pages"
-trap 'rm -rf "$STAGE"' EXIT
+trap 'rm -rf "$STAGE" "$DEPLOCK"' EXIT
 
 test -f "$SITE/index.html"
 if git ls-remote --heads "$ORIGIN" gh-pages | grep -q gh-pages; then

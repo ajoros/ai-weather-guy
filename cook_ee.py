@@ -108,26 +108,12 @@ def synoptic_frames_current(old: dict, synoptic: str) -> bool:
     return bool(late) and all(fr.get("init") == synoptic for fr in late)
 
 
-def _dropbox_retry(fn, tries: int = 4):
-    # ponytail: Dropbox returns errno 11 (EDEADLK) on a busy file; retry beats a stuck run.
-    last: Exception | None = None
-    for n in range(tries):
-        try:
-            return fn()
-        except OSError as exc:
-            last = exc
-            if getattr(exc, "errno", None) != 11 or n == tries - 1:
-                raise
-            time.sleep(0.4 * (n + 1))
-    raise last  # pragma: no cover
-
-
 def read_stamp(path: Path) -> str:
-    return _dropbox_retry(lambda: path.read_text().strip())
+    return cook.dropbox_retry(lambda: path.read_text().strip())
 
 
 def write_stamp(path: Path, text: str) -> None:
-    _dropbox_retry(lambda: path.write_text(text))
+    cook.write_text_publish(path, text)
 
 
 def frame_matches(out: Path, fid: str, hour: int, start: str) -> bool:
@@ -402,7 +388,7 @@ def fetch_one(start: str, hour: int, spec: tuple, dest: Path, force: bool, reg: 
         pass
     extra = f"  ({hour}h window)" if accum == 6 and hour < 6 else ""
     valid_dt = datetime.fromisoformat(start.replace("Z", "+00:00")) + timedelta(hours=hour)
-    raw = dest.with_name(f"{dest.stem}.{os.getpid()}.ee.png")
+    raw = cook.staged_path(f"{dest.stem}.ee.png")
     dest.parent.mkdir(parents=True, exist_ok=True)
     last: Exception | None = None
     for n in range(6):
@@ -473,7 +459,7 @@ def fetch_one(start: str, hour: int, spec: tuple, dest: Path, force: bool, reg: 
         barbs=barbs,
     )
     raw.unlink(missing_ok=True)
-    if dest.stat().st_size < 1000:
+    if cook.dropbox_retry(lambda: dest.stat().st_size) < 1000:
         raise RuntimeError(f"tiny PNG {dest}")
     write_stamp(stamp, start + "\n")
     return f"ok {fid} f{hour:03d}"
@@ -494,7 +480,7 @@ def parse_args() -> argparse.Namespace:
         "--pnw-out",
         type=Path,
         default=None,
-        help="also draw 40–55°N, 135–100°W into this directory",
+        help="also draw the pnw domain (40–55°N, 145–110°W) into this directory",
     )
     p.add_argument("--workers", type=int, default=8)
     p.add_argument("--force", action="store_true")
@@ -536,16 +522,25 @@ def main() -> None:
     regions = [(args.out, cook.DOMAINS[args.domain])]
     if args.pnw_out and args.domain != "pnw":
         regions.append((args.pnw_out, cook.DOMAINS["pnw"]))
-    if args.leads or args.force:
-        wanted = {out: list(targets) for out, _reg in regions}
+    force_by = {}
+    for out, reg in regions:
+        old_reg = load_manifest(out / "manifest.json") if (out / "manifest.json").exists() else {}
+        force_by[out] = args.force or not cook.domain_matches_manifest(old_reg, reg)
+    if args.leads or any(force_by.values()):
+        wanted = {
+            out: list(targets) if force_by[out] or args.leads else stale_leads(
+                out, field_ids, targets, hourly, synoptic
+            )
+            for out, _reg in regions
+        }
     else:
         wanted = {
             out: stale_leads(out, field_ids, targets, hourly, synoptic) for out, _reg in regions
         }
-        if not any(wanted.values()):
-            print(f"already latest hourly {hourly} synoptic {synoptic}", flush=True)
-            print("COOK_STATUS=noop", flush=True)
-            return
+    if not any(wanted.values()):
+        print(f"already latest hourly {hourly} synoptic {synoptic}", flush=True)
+        print("COOK_STATUS=noop", flush=True)
+        return
 
     print(
         f"EE hourly {hourly}  synoptic {synoptic}  fields {field_ids}  "
@@ -562,7 +557,7 @@ def main() -> None:
             for fid in field_ids:
                 rel = f"frames/{fid}/f{hour:03d}.png"
                 jobs.append(
-                    (start, hour, valid, fid, FIELDS[fid], out / rel, args.force, reg, out)
+                    (start, hour, valid, fid, FIELDS[fid], out / rel, force_by[out], reg, out)
                 )
 
     # ponytail: one slider; F+1–48 and F+54–360 may be different inits.
@@ -595,7 +590,7 @@ def main() -> None:
                 extra_out = {
                     **extra,
                     "domain": {"lat": list(reg["lat"]), "lon_360": list(reg["lon"])},
-                    "note": extra["note"] + " Pacific Northwest: 40–55°N, 135–100°W.",
+                    "note": extra["note"] + f" Pacific Northwest: {cook.domain_box_label(reg)}.",
                 }
             merge_manifest(
                 out,

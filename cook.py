@@ -13,11 +13,14 @@ then 6-hourly F54–360. NWS-style fixed bins. °F / inches / mph.
 from __future__ import annotations
 
 import argparse
+import fcntl
 import json
 import os
+import shutil
 import sys
 import time
 import urllib.request
+from contextlib import contextmanager
 from datetime import datetime, timezone
 from pathlib import Path
 from zoneinfo import ZoneInfo
@@ -38,7 +41,7 @@ from plot_wn3_stats import (
     open_stats,
 )
 
-# wide: North America + northern Pacific. pnw: 40–55°N, 135–100°W.
+# wide: North America + northern Pacific. pnw: 40–55°N, 145–110°W.
 DOMAINS = {
     "wide": {
         "name": "wide",
@@ -50,7 +53,7 @@ DOMAINS = {
     "pnw": {
         "name": "pnw",
         "lat": (40.0, 55.0),
-        "lon": (225.0, 260.0),
+        "lon": (215.0, 250.0),
         "fig": (18.0, 7.71),
         "thumb": (2100, 900),
     },
@@ -59,6 +62,66 @@ LAT0, LAT1 = DOMAINS["wide"]["lat"]
 LON0, LON1 = DOMAINS["wide"]["lon"]
 FIG_SIZE = DOMAINS["wide"]["fig"]
 CACHE = Path(__file__).resolve().parent / ".cache" / "naturalearth"
+# site/ is Dropbox. Writes go here first so the sync client cannot EDEADLK mid-savefig.
+WRITE_STAGE = Path.home() / "Library/Application Support/ai-weather-guy/write"
+
+
+def dropbox_retry(fn, tries: int = 8):
+    # ponytail: errno 11 is Dropbox, not a bad file. Ceiling: still fails if locked > ~10s.
+    last: Exception | None = None
+    for n in range(tries):
+        try:
+            return fn()
+        except OSError as exc:
+            last = exc
+            if getattr(exc, "errno", None) != 11 or n == tries - 1:
+                raise
+            time.sleep(0.4 * (n + 1))
+    raise last  # pragma: no cover
+
+
+def staged_path(name: str) -> Path:
+    WRITE_STAGE.mkdir(parents=True, exist_ok=True)
+    return WRITE_STAGE / f"{os.getpid()}.{time.time_ns()}.{name}"
+
+
+def publish_file(src: Path, dest: Path) -> None:
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    dropbox_retry(lambda: shutil.copy2(src, dest))
+
+
+@contextmanager
+def manifest_lock(out: Path):
+    # ponytail: EE and ensemble can run at once; one writer for manifest.json.
+    lock = Path(out) / ".manifest.lock"
+    lock.parent.mkdir(parents=True, exist_ok=True)
+    fh = lock.open("a")
+    try:
+        fcntl.flock(fh.fileno(), fcntl.LOCK_EX)
+        yield
+    finally:
+        fcntl.flock(fh.fileno(), fcntl.LOCK_UN)
+        fh.close()
+
+
+def write_text_publish(dest: Path, text: str) -> None:
+    tmp = staged_path(dest.name)
+    tmp.write_text(text)
+    try:
+        publish_file(tmp, dest)
+    finally:
+        tmp.unlink(missing_ok=True)
+
+
+def domain_box_label(reg: dict) -> str:
+    lat0, lat1 = reg["lat"]
+    lon0, lon1 = reg["lon"]
+    return f"{lat0:.0f}–{lat1:.0f}°N, {360 - lon0:.0f}–{360 - lon1:.0f}°W"
+
+
+def domain_matches_manifest(old: dict, reg: dict) -> bool:
+    d = old.get("domain") or {}
+    return d.get("lat") == list(reg["lat"]) and d.get("lon_360") == list(reg["lon"])
 
 
 def apply_domain(name: str) -> dict:
@@ -708,9 +771,13 @@ def finish_map(fig, ax, mappable, pal, path: Path) -> None:
         extend="both",
     )
     fig.tight_layout(pad=0.25)
-    path.parent.mkdir(parents=True, exist_ok=True)
-    fig.savefig(path, facecolor="white", bbox_inches="tight", pad_inches=0.08)
+    tmp = staged_path(path.name)
+    fig.savefig(tmp, facecolor="white", bbox_inches="tight", pad_inches=0.08)
     plt.close(fig)
+    try:
+        publish_file(tmp, path)
+    finally:
+        tmp.unlink(missing_ok=True)
 
 
 def add_boundaries(ax) -> None:
@@ -830,6 +897,7 @@ def write_manifest(
     field_ids: list[str],
     frames: list[dict],
     extra: dict | None = None,
+    locked: bool = False,
 ) -> None:
     manifest = {
         "run": run,
@@ -851,7 +919,16 @@ def write_manifest(
     }
     if extra:
         manifest.update(extra)
-    (out / "manifest.json").write_text(json.dumps(manifest, indent=2) + "\n")
+    payload = json.dumps(manifest, indent=2) + "\n"
+
+    def _write() -> None:
+        write_text_publish(out / "manifest.json", payload)
+
+    if locked:
+        _write()
+    else:
+        with manifest_lock(out):
+            _write()
 
 
 def page_field_ids(old: dict, incoming: list[str]) -> list[str]:
@@ -864,11 +941,15 @@ def page_field_ids(old: dict, incoming: list[str]) -> list[str]:
 def load_manifest(path: Path) -> dict:
     if not path.exists():
         return {"variables": [], "frames": []}
-    if path.stat().st_size == 0:
-        raise SystemExit(
-            f"{path} is an empty placeholder. Make that file available offline before cooking."
-        )
-    return json.loads(path.read_text())
+
+    def _read() -> dict:
+        if path.stat().st_size == 0:
+            raise SystemExit(
+                f"{path} is an empty placeholder. Make that file available offline before cooking."
+            )
+        return json.loads(path.read_text())
+
+    return dropbox_retry(_read)
 
 
 def merge_manifest(
@@ -883,37 +964,39 @@ def merge_manifest(
     keep_clock: bool = False,
 ) -> list[dict]:
     path = out / "manifest.json"
-    old = load_manifest(path)
-    ids = page_field_ids(old, new_ids)
-    by_lead = {fr["lead"]: fr for fr in old.get("frames", [])}
-    for hour, fr in done_hours.items():
-        cur = by_lead.get(hour)
-        if cur is None:
-            cur = {"lead": hour, "valid": fr["valid"], "files": {}}
-            if fr.get("init"):
-                cur["init"] = fr["init"]
-        elif not keep_clock:
-            cur["valid"] = fr["valid"]
-            if fr.get("init"):
-                cur["init"] = fr["init"]
-        cur["files"].update(fr["files"])
-        by_lead[hour] = cur
-    for fr in by_lead.values():
-        fr["files"] = {k: v for k, v in fr.get("files", {}).items() if k in ids}
-    if extra and extra.get("synoptic_init"):
-        for h, fr in by_lead.items():
-            if "init" not in fr and h > 48:
-                fr["init"] = extra["synoptic_init"]
-    frames = [by_lead[h] for h in display_leads() if h in by_lead]
-    write_manifest(
-        out,
-        run=run,
-        init=init,
-        source=source,
-        field_ids=ids,
-        frames=frames,
-        extra=extra,
-    )
+    with manifest_lock(out):
+        old = load_manifest(path)
+        ids = page_field_ids(old, new_ids)
+        by_lead = {fr["lead"]: fr for fr in old.get("frames", [])}
+        for hour, fr in done_hours.items():
+            cur = by_lead.get(hour)
+            if cur is None:
+                cur = {"lead": hour, "valid": fr["valid"], "files": {}}
+                if fr.get("init"):
+                    cur["init"] = fr["init"]
+            elif not keep_clock:
+                cur["valid"] = fr["valid"]
+                if fr.get("init"):
+                    cur["init"] = fr["init"]
+            cur["files"].update(fr["files"])
+            by_lead[hour] = cur
+        for fr in by_lead.values():
+            fr["files"] = {k: v for k, v in fr.get("files", {}).items() if k in ids}
+        if extra and extra.get("synoptic_init"):
+            for h, fr in by_lead.items():
+                if "init" not in fr and h > 48:
+                    fr["init"] = extra["synoptic_init"]
+        frames = [by_lead[h] for h in display_leads() if h in by_lead]
+        write_manifest(
+            out,
+            run=run,
+            init=init,
+            source=source,
+            field_ids=ids,
+            frames=frames,
+            extra=extra,
+            locked=True,
+        )
     return frames
 
 
