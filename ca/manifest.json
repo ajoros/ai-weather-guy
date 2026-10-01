@@ -12,7 +12,7 @@
     ]
   },
   "source": "earthengine:projects/gcp-public-data-weathernext/assets/weathernext_3_0_0_0p1deg hourly=2026-10-01T11:00:00Z synoptic=2026-10-01T12:00:00Z",
-  "note": "F+1\u201348 from latest hourly init (interim or synoptic). F+54\u2013360 from latest 15-day synoptic. Maps only \u2014 no downloadable grids. California: 27\u201345\u00b0N, 145\u2013110\u00b0W.",
+  "note": "Maps only \u2014 no downloadable grids. California: 27\u201345\u00b0N, 145\u2013110\u00b0W.",
   "disclaimer": "WeatherNext 3 experimental research data. Not an official forecast, watch, or warning, and not NWS. Do not use for life-and-property decisions.",
   "keys": "\u2190 \u2192 step time \u00b7 space play \u00b7 Home/End ends",
   "variables": [
@@ -45,9 +45,39 @@
       "id": "wind10_p90",
       "label": "10 m wind p90 (gust proxy)",
       "units": "mph"
+    },
+    {
+      "id": "h500",
+      "label": "500 mb height",
+      "units": "kt"
+    },
+    {
+      "id": "t850",
+      "label": "850 mb temperature",
+      "units": "\u00b0C"
+    },
+    {
+      "id": "wind925",
+      "label": "925 mb wind",
+      "units": "kt"
+    },
+    {
+      "id": "wind700",
+      "label": "700 mb wind",
+      "units": "kt"
+    },
+    {
+      "id": "wind500",
+      "label": "500 mb wind",
+      "units": "kt"
+    },
+    {
+      "id": "wind300",
+      "label": "300 mb wind",
+      "units": "kt"
     }
   ],
-  "generated": "2026-10-01T20:05:04Z",
+  "generated": "2026-10-01T21:03:10Z",
   "frames": [
     {
       "lead": 1,
@@ -123,7 +153,13 @@
         "wind10": "frames/wind10/f006.jpg",
         "wind10_p90": "frames/wind10_p90/f006.jpg",
         "qpf1_imerg": "frames/qpf1_imerg/f006.jpg",
-        "qpf_acc": "frames/qpf_acc/f006.jpg"
+        "qpf_acc": "frames/qpf_acc/f006.jpg",
+        "h500": "frames/h500/f006.jpg",
+        "t850": "frames/t850/f006.jpg",
+        "wind925": "frames/wind925/f006.jpg",
+        "wind700": "frames/wind700/f006.jpg",
+        "wind500": "frames/wind500/f006.jpg",
+        "wind300": "frames/wind300/f006.jpg"
       },
       "init": "2026-10-01T11:00:00Z"
     },
@@ -201,7 +237,13 @@
         "slp": "frames/slp/f012.jpg",
         "wind10_p90": "frames/wind10_p90/f012.jpg",
         "wind10": "frames/wind10/f012.jpg",
-        "station_t": "frames/station_t/f012.jpg"
+        "station_t": "frames/station_t/f012.jpg",
+        "h500": "frames/h500/f012.jpg",
+        "t850": "frames/t850/f012.jpg",
+        "wind925": "frames/wind925/f012.jpg",
+        "wind700": "frames/wind700/f012.jpg",
+        "wind500": "frames/wind500/f012.jpg",
+        "wind300": "frames/wind300/f012.jpg"
       },
       "init": "2026-10-01T11:00:00Z"
     },
@@ -279,7 +321,13 @@
         "slp": "frames/slp/f018.jpg",
         "wind10_p90": "frames/wind10_p90/f018.jpg",
         "qpf_acc": "frames/qpf_acc/f018.jpg",
-        "wind10": "frames/wind10/f018.jpg"
+        "wind10": "frames/wind10/f018.jpg",
+        "h500": "frames/h500/f018.jpg",
+        "t850": "frames/t850/f018.jpg",
+        "wind925": "frames/wind925/f018.jpg",
+        "wind700": "frames/wind700/f018.jpg",
+        "wind500": "frames/wind500/f018.jpg",
+        "wind300": "frames/wind300/f018.jpg"
       },
       "init": "2026-10-01T11:00:00Z"
     },
@@ -357,7 +405,13 @@
         "wind10_p90": "frames/wind10_p90/f024.jpg",
         "wind10": "frames/wind10/f024.jpg",
         "qpf_acc": "frames/qpf_acc/f024.jpg",
-        "qpf1_imerg": "frames/qpf1_imerg/f024.jpg"
+        "qpf1_imerg": "frames/qpf1_imerg/f024.jpg",
+        "h500": "frames/h500/f024.jpg",
+        "t850": "frames/t850/f024.jpg",
+        "wind925": "frames/wind925/f024.jpg",
+        "wind700": "frames/wind700/f024.jpg",
+        "wind500": "frames/wind500/f024.jpg",
+        "wind300": "frames/wind300/f024.jpg"
       },
       "init": "2026-10-01T11:00:00Z"
     },
@@ -435,7 +489,13 @@
         "qpf1_imerg": "frames/qpf1_imerg/f030.jpg",
         "wind10_p90": "frames/wind10_p90/f030.jpg",
         "station_t": "frames/station_t/f030.jpg",
-        "qpf_acc": "frames/qpf_acc/f030.jpg"
+        "qpf_acc": "frames/qpf_acc/f030.jpg",
+        "h500": "frames/h500/f030.jpg",
+        "t850": "frames/t850/f030.jpg",
+        "wind925": "frames/wind925/f030.jpg",
+        "wind700": "frames/wind700/f030.jpg",
+        "wind500": "frames/wind500/f030.jpg",
+        "wind300": "frames/wind300/f030.jpg"
       },
       "init": "2026-10-01T11:00:00Z"
     },
@@ -513,7 +573,13 @@
         "qpf_acc": "frames/qpf_acc/f036.jpg",
         "station_t": "frames/station_t/f036.jpg",
         "wind10_p90": "frames/wind10_p90/f036.jpg",
-        "slp": "frames/slp/f036.jpg"
+        "slp": "frames/slp/f036.jpg",
+        "h500": "frames/h500/f036.jpg",
+        "t850": "frames/t850/f036.jpg",
+        "wind925": "frames/wind925/f036.jpg",
+        "wind700": "frames/wind700/f036.jpg",
+        "wind500": "frames/wind500/f036.jpg",
+        "wind300": "frames/wind300/f036.jpg"
       },
       "init": "2026-10-01T11:00:00Z"
     },
@@ -591,7 +657,13 @@
         "wind10": "frames/wind10/f042.jpg",
         "qpf_acc": "frames/qpf_acc/f042.jpg",
         "qpf1_imerg": "frames/qpf1_imerg/f042.jpg",
-        "station_t": "frames/station_t/f042.jpg"
+        "station_t": "frames/station_t/f042.jpg",
+        "h500": "frames/h500/f042.jpg",
+        "t850": "frames/t850/f042.jpg",
+        "wind925": "frames/wind925/f042.jpg",
+        "wind700": "frames/wind700/f042.jpg",
+        "wind500": "frames/wind500/f042.jpg",
+        "wind300": "frames/wind300/f042.jpg"
       },
       "init": "2026-10-01T11:00:00Z"
     },
@@ -669,7 +741,13 @@
         "slp": "frames/slp/f048.jpg",
         "wind10_p90": "frames/wind10_p90/f048.jpg",
         "wind10": "frames/wind10/f048.jpg",
-        "qpf_acc": "frames/qpf_acc/f048.jpg"
+        "qpf_acc": "frames/qpf_acc/f048.jpg",
+        "h500": "frames/h500/f048.jpg",
+        "t850": "frames/t850/f048.jpg",
+        "wind925": "frames/wind925/f048.jpg",
+        "wind700": "frames/wind700/f048.jpg",
+        "wind500": "frames/wind500/f048.jpg",
+        "wind300": "frames/wind300/f048.jpg"
       },
       "init": "2026-10-01T11:00:00Z"
     },
@@ -682,7 +760,13 @@
         "wind10_p90": "frames/wind10_p90/f054.jpg",
         "wind10": "frames/wind10/f054.jpg",
         "qpf_acc": "frames/qpf_acc/f054.jpg",
-        "station_t": "frames/station_t/f054.jpg"
+        "station_t": "frames/station_t/f054.jpg",
+        "h500": "frames/h500/f054.jpg",
+        "t850": "frames/t850/f054.jpg",
+        "wind925": "frames/wind925/f054.jpg",
+        "wind700": "frames/wind700/f054.jpg",
+        "wind500": "frames/wind500/f054.jpg",
+        "wind300": "frames/wind300/f054.jpg"
       },
       "init": "2026-10-01T12:00:00Z"
     },
@@ -695,7 +779,13 @@
         "station_t": "frames/station_t/f060.jpg",
         "qpf1_imerg": "frames/qpf1_imerg/f060.jpg",
         "wind10_p90": "frames/wind10_p90/f060.jpg",
-        "qpf_acc": "frames/qpf_acc/f060.jpg"
+        "qpf_acc": "frames/qpf_acc/f060.jpg",
+        "h500": "frames/h500/f060.jpg",
+        "t850": "frames/t850/f060.jpg",
+        "wind925": "frames/wind925/f060.jpg",
+        "wind700": "frames/wind700/f060.jpg",
+        "wind500": "frames/wind500/f060.jpg",
+        "wind300": "frames/wind300/f060.jpg"
       },
       "init": "2026-10-01T12:00:00Z"
     },
@@ -708,7 +798,13 @@
         "wind10_p90": "frames/wind10_p90/f066.jpg",
         "wind10": "frames/wind10/f066.jpg",
         "station_t": "frames/station_t/f066.jpg",
-        "qpf_acc": "frames/qpf_acc/f066.jpg"
+        "qpf_acc": "frames/qpf_acc/f066.jpg",
+        "h500": "frames/h500/f066.jpg",
+        "t850": "frames/t850/f066.jpg",
+        "wind925": "frames/wind925/f066.jpg",
+        "wind700": "frames/wind700/f066.jpg",
+        "wind500": "frames/wind500/f066.jpg",
+        "wind300": "frames/wind300/f066.jpg"
       },
       "init": "2026-10-01T12:00:00Z"
     },
@@ -721,7 +817,13 @@
         "slp": "frames/slp/f072.jpg",
         "wind10_p90": "frames/wind10_p90/f072.jpg",
         "wind10": "frames/wind10/f072.jpg",
-        "qpf_acc": "frames/qpf_acc/f072.jpg"
+        "qpf_acc": "frames/qpf_acc/f072.jpg",
+        "h500": "frames/h500/f072.jpg",
+        "t850": "frames/t850/f072.jpg",
+        "wind925": "frames/wind925/f072.jpg",
+        "wind700": "frames/wind700/f072.jpg",
+        "wind500": "frames/wind500/f072.jpg",
+        "wind300": "frames/wind300/f072.jpg"
       },
       "init": "2026-10-01T12:00:00Z"
     },
@@ -734,7 +836,13 @@
         "wind10": "frames/wind10/f078.jpg",
         "station_t": "frames/station_t/f078.jpg",
         "wind10_p90": "frames/wind10_p90/f078.jpg",
-        "qpf_acc": "frames/qpf_acc/f078.jpg"
+        "qpf_acc": "frames/qpf_acc/f078.jpg",
+        "h500": "frames/h500/f078.jpg",
+        "t850": "frames/t850/f078.jpg",
+        "wind925": "frames/wind925/f078.jpg",
+        "wind700": "frames/wind700/f078.jpg",
+        "wind500": "frames/wind500/f078.jpg",
+        "wind300": "frames/wind300/f078.jpg"
       },
       "init": "2026-10-01T12:00:00Z"
     },
@@ -747,7 +855,13 @@
         "qpf1_imerg": "frames/qpf1_imerg/f084.jpg",
         "wind10_p90": "frames/wind10_p90/f084.jpg",
         "wind10": "frames/wind10/f084.jpg",
-        "qpf_acc": "frames/qpf_acc/f084.jpg"
+        "qpf_acc": "frames/qpf_acc/f084.jpg",
+        "h500": "frames/h500/f084.jpg",
+        "t850": "frames/t850/f084.jpg",
+        "wind925": "frames/wind925/f084.jpg",
+        "wind700": "frames/wind700/f084.jpg",
+        "wind500": "frames/wind500/f084.jpg",
+        "wind300": "frames/wind300/f084.jpg"
       },
       "init": "2026-10-01T12:00:00Z"
     },
@@ -760,7 +874,13 @@
         "station_t": "frames/station_t/f090.jpg",
         "wind10_p90": "frames/wind10_p90/f090.jpg",
         "wind10": "frames/wind10/f090.jpg",
-        "qpf_acc": "frames/qpf_acc/f090.jpg"
+        "qpf_acc": "frames/qpf_acc/f090.jpg",
+        "h500": "frames/h500/f090.jpg",
+        "t850": "frames/t850/f090.jpg",
+        "wind925": "frames/wind925/f090.jpg",
+        "wind700": "frames/wind700/f090.jpg",
+        "wind500": "frames/wind500/f090.jpg",
+        "wind300": "frames/wind300/f090.jpg"
       },
       "init": "2026-10-01T12:00:00Z"
     },
@@ -773,7 +893,13 @@
         "station_t": "frames/station_t/f096.jpg",
         "wind10_p90": "frames/wind10_p90/f096.jpg",
         "wind10": "frames/wind10/f096.jpg",
-        "qpf_acc": "frames/qpf_acc/f096.jpg"
+        "qpf_acc": "frames/qpf_acc/f096.jpg",
+        "h500": "frames/h500/f096.jpg",
+        "t850": "frames/t850/f096.jpg",
+        "wind925": "frames/wind925/f096.jpg",
+        "wind700": "frames/wind700/f096.jpg",
+        "wind500": "frames/wind500/f096.jpg",
+        "wind300": "frames/wind300/f096.jpg"
       },
       "init": "2026-10-01T12:00:00Z"
     },
@@ -786,7 +912,13 @@
         "slp": "frames/slp/f102.jpg",
         "wind10_p90": "frames/wind10_p90/f102.jpg",
         "qpf_acc": "frames/qpf_acc/f102.jpg",
-        "station_t": "frames/station_t/f102.jpg"
+        "station_t": "frames/station_t/f102.jpg",
+        "h500": "frames/h500/f102.jpg",
+        "t850": "frames/t850/f102.jpg",
+        "wind925": "frames/wind925/f102.jpg",
+        "wind700": "frames/wind700/f102.jpg",
+        "wind500": "frames/wind500/f102.jpg",
+        "wind300": "frames/wind300/f102.jpg"
       },
       "init": "2026-10-01T12:00:00Z"
     },
@@ -799,7 +931,13 @@
         "slp": "frames/slp/f108.jpg",
         "wind10_p90": "frames/wind10_p90/f108.jpg",
         "qpf1_imerg": "frames/qpf1_imerg/f108.jpg",
-        "qpf_acc": "frames/qpf_acc/f108.jpg"
+        "qpf_acc": "frames/qpf_acc/f108.jpg",
+        "h500": "frames/h500/f108.jpg",
+        "t850": "frames/t850/f108.jpg",
+        "wind925": "frames/wind925/f108.jpg",
+        "wind700": "frames/wind700/f108.jpg",
+        "wind500": "frames/wind500/f108.jpg",
+        "wind300": "frames/wind300/f108.jpg"
       },
       "init": "2026-10-01T12:00:00Z"
     },
@@ -812,7 +950,13 @@
         "wind10": "frames/wind10/f114.jpg",
         "wind10_p90": "frames/wind10_p90/f114.jpg",
         "station_t": "frames/station_t/f114.jpg",
-        "qpf_acc": "frames/qpf_acc/f114.jpg"
+        "qpf_acc": "frames/qpf_acc/f114.jpg",
+        "h500": "frames/h500/f114.jpg",
+        "t850": "frames/t850/f114.jpg",
+        "wind925": "frames/wind925/f114.jpg",
+        "wind700": "frames/wind700/f114.jpg",
+        "wind500": "frames/wind500/f114.jpg",
+        "wind300": "frames/wind300/f114.jpg"
       },
       "init": "2026-10-01T12:00:00Z"
     },
@@ -825,7 +969,13 @@
         "station_t": "frames/station_t/f120.jpg",
         "wind10": "frames/wind10/f120.jpg",
         "wind10_p90": "frames/wind10_p90/f120.jpg",
-        "qpf_acc": "frames/qpf_acc/f120.jpg"
+        "qpf_acc": "frames/qpf_acc/f120.jpg",
+        "h500": "frames/h500/f120.jpg",
+        "t850": "frames/t850/f120.jpg",
+        "wind925": "frames/wind925/f120.jpg",
+        "wind700": "frames/wind700/f120.jpg",
+        "wind500": "frames/wind500/f120.jpg",
+        "wind300": "frames/wind300/f120.jpg"
       },
       "init": "2026-10-01T12:00:00Z"
     },
@@ -838,7 +988,13 @@
         "slp": "frames/slp/f126.jpg",
         "wind10_p90": "frames/wind10_p90/f126.jpg",
         "wind10": "frames/wind10/f126.jpg",
-        "qpf_acc": "frames/qpf_acc/f126.jpg"
+        "qpf_acc": "frames/qpf_acc/f126.jpg",
+        "h500": "frames/h500/f126.jpg",
+        "t850": "frames/t850/f126.jpg",
+        "wind925": "frames/wind925/f126.jpg",
+        "wind700": "frames/wind700/f126.jpg",
+        "wind500": "frames/wind500/f126.jpg",
+        "wind300": "frames/wind300/f126.jpg"
       },
       "init": "2026-10-01T12:00:00Z"
     },
@@ -851,7 +1007,13 @@
         "wind10": "frames/wind10/f132.jpg",
         "wind10_p90": "frames/wind10_p90/f132.jpg",
         "qpf1_imerg": "frames/qpf1_imerg/f132.jpg",
-        "qpf_acc": "frames/qpf_acc/f132.jpg"
+        "qpf_acc": "frames/qpf_acc/f132.jpg",
+        "h500": "frames/h500/f132.jpg",
+        "t850": "frames/t850/f132.jpg",
+        "wind925": "frames/wind925/f132.jpg",
+        "wind700": "frames/wind700/f132.jpg",
+        "wind500": "frames/wind500/f132.jpg",
+        "wind300": "frames/wind300/f132.jpg"
       },
       "init": "2026-10-01T12:00:00Z"
     },
@@ -864,7 +1026,13 @@
         "wind10": "frames/wind10/f138.jpg",
         "slp": "frames/slp/f138.jpg",
         "wind10_p90": "frames/wind10_p90/f138.jpg",
-        "qpf_acc": "frames/qpf_acc/f138.jpg"
+        "qpf_acc": "frames/qpf_acc/f138.jpg",
+        "h500": "frames/h500/f138.jpg",
+        "t850": "frames/t850/f138.jpg",
+        "wind925": "frames/wind925/f138.jpg",
+        "wind700": "frames/wind700/f138.jpg",
+        "wind500": "frames/wind500/f138.jpg",
+        "wind300": "frames/wind300/f138.jpg"
       },
       "init": "2026-10-01T12:00:00Z"
     },
@@ -877,7 +1045,13 @@
         "wind10": "frames/wind10/f144.jpg",
         "station_t": "frames/station_t/f144.jpg",
         "wind10_p90": "frames/wind10_p90/f144.jpg",
-        "qpf_acc": "frames/qpf_acc/f144.jpg"
+        "qpf_acc": "frames/qpf_acc/f144.jpg",
+        "h500": "frames/h500/f144.jpg",
+        "t850": "frames/t850/f144.jpg",
+        "wind925": "frames/wind925/f144.jpg",
+        "wind700": "frames/wind700/f144.jpg",
+        "wind500": "frames/wind500/f144.jpg",
+        "wind300": "frames/wind300/f144.jpg"
       },
       "init": "2026-10-01T12:00:00Z"
     },
@@ -890,7 +1064,13 @@
         "wind10": "frames/wind10/f150.jpg",
         "wind10_p90": "frames/wind10_p90/f150.jpg",
         "slp": "frames/slp/f150.jpg",
-        "qpf_acc": "frames/qpf_acc/f150.jpg"
+        "qpf_acc": "frames/qpf_acc/f150.jpg",
+        "h500": "frames/h500/f150.jpg",
+        "t850": "frames/t850/f150.jpg",
+        "wind925": "frames/wind925/f150.jpg",
+        "wind700": "frames/wind700/f150.jpg",
+        "wind500": "frames/wind500/f150.jpg",
+        "wind300": "frames/wind300/f150.jpg"
       },
       "init": "2026-10-01T12:00:00Z"
     },
@@ -903,7 +1083,13 @@
         "wind10": "frames/wind10/f156.jpg",
         "slp": "frames/slp/f156.jpg",
         "wind10_p90": "frames/wind10_p90/f156.jpg",
-        "qpf_acc": "frames/qpf_acc/f156.jpg"
+        "qpf_acc": "frames/qpf_acc/f156.jpg",
+        "h500": "frames/h500/f156.jpg",
+        "t850": "frames/t850/f156.jpg",
+        "wind925": "frames/wind925/f156.jpg",
+        "wind700": "frames/wind700/f156.jpg",
+        "wind500": "frames/wind500/f156.jpg",
+        "wind300": "frames/wind300/f156.jpg"
       },
       "init": "2026-10-01T12:00:00Z"
     },
@@ -916,7 +1102,13 @@
         "wind10": "frames/wind10/f162.jpg",
         "slp": "frames/slp/f162.jpg",
         "wind10_p90": "frames/wind10_p90/f162.jpg",
-        "qpf_acc": "frames/qpf_acc/f162.jpg"
+        "qpf_acc": "frames/qpf_acc/f162.jpg",
+        "h500": "frames/h500/f162.jpg",
+        "t850": "frames/t850/f162.jpg",
+        "wind925": "frames/wind925/f162.jpg",
+        "wind700": "frames/wind700/f162.jpg",
+        "wind500": "frames/wind500/f162.jpg",
+        "wind300": "frames/wind300/f162.jpg"
       },
       "init": "2026-10-01T12:00:00Z"
     },
@@ -929,7 +1121,13 @@
         "station_t": "frames/station_t/f168.jpg",
         "wind10": "frames/wind10/f168.jpg",
         "wind10_p90": "frames/wind10_p90/f168.jpg",
-        "qpf_acc": "frames/qpf_acc/f168.jpg"
+        "qpf_acc": "frames/qpf_acc/f168.jpg",
+        "h500": "frames/h500/f168.jpg",
+        "t850": "frames/t850/f168.jpg",
+        "wind925": "frames/wind925/f168.jpg",
+        "wind700": "frames/wind700/f168.jpg",
+        "wind500": "frames/wind500/f168.jpg",
+        "wind300": "frames/wind300/f168.jpg"
       },
       "init": "2026-10-01T12:00:00Z"
     },
@@ -942,7 +1140,13 @@
         "slp": "frames/slp/f174.jpg",
         "wind10": "frames/wind10/f174.jpg",
         "wind10_p90": "frames/wind10_p90/f174.jpg",
-        "qpf_acc": "frames/qpf_acc/f174.jpg"
+        "qpf_acc": "frames/qpf_acc/f174.jpg",
+        "h500": "frames/h500/f174.jpg",
+        "t850": "frames/t850/f174.jpg",
+        "wind925": "frames/wind925/f174.jpg",
+        "wind700": "frames/wind700/f174.jpg",
+        "wind500": "frames/wind500/f174.jpg",
+        "wind300": "frames/wind300/f174.jpg"
       },
       "init": "2026-10-01T12:00:00Z"
     },
@@ -955,7 +1159,13 @@
         "slp": "frames/slp/f180.jpg",
         "wind10": "frames/wind10/f180.jpg",
         "wind10_p90": "frames/wind10_p90/f180.jpg",
-        "qpf_acc": "frames/qpf_acc/f180.jpg"
+        "qpf_acc": "frames/qpf_acc/f180.jpg",
+        "h500": "frames/h500/f180.jpg",
+        "t850": "frames/t850/f180.jpg",
+        "wind925": "frames/wind925/f180.jpg",
+        "wind700": "frames/wind700/f180.jpg",
+        "wind500": "frames/wind500/f180.jpg",
+        "wind300": "frames/wind300/f180.jpg"
       },
       "init": "2026-10-01T12:00:00Z"
     },
@@ -968,7 +1178,13 @@
         "slp": "frames/slp/f186.jpg",
         "wind10": "frames/wind10/f186.jpg",
         "wind10_p90": "frames/wind10_p90/f186.jpg",
-        "qpf_acc": "frames/qpf_acc/f186.jpg"
+        "qpf_acc": "frames/qpf_acc/f186.jpg",
+        "h500": "frames/h500/f186.jpg",
+        "t850": "frames/t850/f186.jpg",
+        "wind925": "frames/wind925/f186.jpg",
+        "wind700": "frames/wind700/f186.jpg",
+        "wind500": "frames/wind500/f186.jpg",
+        "wind300": "frames/wind300/f186.jpg"
       },
       "init": "2026-10-01T12:00:00Z"
     },
@@ -981,7 +1197,13 @@
         "wind10": "frames/wind10/f192.jpg",
         "wind10_p90": "frames/wind10_p90/f192.jpg",
         "station_t": "frames/station_t/f192.jpg",
-        "qpf_acc": "frames/qpf_acc/f192.jpg"
+        "qpf_acc": "frames/qpf_acc/f192.jpg",
+        "h500": "frames/h500/f192.jpg",
+        "t850": "frames/t850/f192.jpg",
+        "wind925": "frames/wind925/f192.jpg",
+        "wind700": "frames/wind700/f192.jpg",
+        "wind500": "frames/wind500/f192.jpg",
+        "wind300": "frames/wind300/f192.jpg"
       },
       "init": "2026-10-01T12:00:00Z"
     },
@@ -994,7 +1216,13 @@
         "slp": "frames/slp/f198.jpg",
         "wind10_p90": "frames/wind10_p90/f198.jpg",
         "wind10": "frames/wind10/f198.jpg",
-        "qpf_acc": "frames/qpf_acc/f198.jpg"
+        "qpf_acc": "frames/qpf_acc/f198.jpg",
+        "h500": "frames/h500/f198.jpg",
+        "t850": "frames/t850/f198.jpg",
+        "wind925": "frames/wind925/f198.jpg",
+        "wind700": "frames/wind700/f198.jpg",
+        "wind500": "frames/wind500/f198.jpg",
+        "wind300": "frames/wind300/f198.jpg"
       },
       "init": "2026-10-01T12:00:00Z"
     },
@@ -1007,7 +1235,13 @@
         "wind10_p90": "frames/wind10_p90/f204.jpg",
         "slp": "frames/slp/f204.jpg",
         "wind10": "frames/wind10/f204.jpg",
-        "qpf_acc": "frames/qpf_acc/f204.jpg"
+        "qpf_acc": "frames/qpf_acc/f204.jpg",
+        "h500": "frames/h500/f204.jpg",
+        "t850": "frames/t850/f204.jpg",
+        "wind925": "frames/wind925/f204.jpg",
+        "wind700": "frames/wind700/f204.jpg",
+        "wind500": "frames/wind500/f204.jpg",
+        "wind300": "frames/wind300/f204.jpg"
       },
       "init": "2026-10-01T12:00:00Z"
     },
@@ -1020,7 +1254,13 @@
         "wind10_p90": "frames/wind10_p90/f210.jpg",
         "wind10": "frames/wind10/f210.jpg",
         "slp": "frames/slp/f210.jpg",
-        "qpf_acc": "frames/qpf_acc/f210.jpg"
+        "qpf_acc": "frames/qpf_acc/f210.jpg",
+        "h500": "frames/h500/f210.jpg",
+        "t850": "frames/t850/f210.jpg",
+        "wind925": "frames/wind925/f210.jpg",
+        "wind700": "frames/wind700/f210.jpg",
+        "wind500": "frames/wind500/f210.jpg",
+        "wind300": "frames/wind300/f210.jpg"
       },
       "init": "2026-10-01T12:00:00Z"
     },
@@ -1033,7 +1273,13 @@
         "qpf1_imerg": "frames/qpf1_imerg/f216.jpg",
         "wind10": "frames/wind10/f216.jpg",
         "wind10_p90": "frames/wind10_p90/f216.jpg",
-        "qpf_acc": "frames/qpf_acc/f216.jpg"
+        "qpf_acc": "frames/qpf_acc/f216.jpg",
+        "h500": "frames/h500/f216.jpg",
+        "t850": "frames/t850/f216.jpg",
+        "wind925": "frames/wind925/f216.jpg",
+        "wind700": "frames/wind700/f216.jpg",
+        "wind500": "frames/wind500/f216.jpg",
+        "wind300": "frames/wind300/f216.jpg"
       },
       "init": "2026-10-01T12:00:00Z"
     },
@@ -1046,7 +1292,13 @@
         "slp": "frames/slp/f222.jpg",
         "wind10": "frames/wind10/f222.jpg",
         "wind10_p90": "frames/wind10_p90/f222.jpg",
-        "qpf_acc": "frames/qpf_acc/f222.jpg"
+        "qpf_acc": "frames/qpf_acc/f222.jpg",
+        "h500": "frames/h500/f222.jpg",
+        "t850": "frames/t850/f222.jpg",
+        "wind925": "frames/wind925/f222.jpg",
+        "wind700": "frames/wind700/f222.jpg",
+        "wind500": "frames/wind500/f222.jpg",
+        "wind300": "frames/wind300/f222.jpg"
       },
       "init": "2026-10-01T12:00:00Z"
     },
@@ -1059,7 +1311,13 @@
         "wind10_p90": "frames/wind10_p90/f228.jpg",
         "qpf1_imerg": "frames/qpf1_imerg/f228.jpg",
         "station_t": "frames/station_t/f228.jpg",
-        "qpf_acc": "frames/qpf_acc/f228.jpg"
+        "qpf_acc": "frames/qpf_acc/f228.jpg",
+        "h500": "frames/h500/f228.jpg",
+        "t850": "frames/t850/f228.jpg",
+        "wind925": "frames/wind925/f228.jpg",
+        "wind700": "frames/wind700/f228.jpg",
+        "wind500": "frames/wind500/f228.jpg",
+        "wind300": "frames/wind300/f228.jpg"
       },
       "init": "2026-10-01T12:00:00Z"
     },
@@ -1072,7 +1330,13 @@
         "wind10": "frames/wind10/f234.jpg",
         "slp": "frames/slp/f234.jpg",
         "wind10_p90": "frames/wind10_p90/f234.jpg",
-        "qpf_acc": "frames/qpf_acc/f234.jpg"
+        "qpf_acc": "frames/qpf_acc/f234.jpg",
+        "h500": "frames/h500/f234.jpg",
+        "t850": "frames/t850/f234.jpg",
+        "wind925": "frames/wind925/f234.jpg",
+        "wind700": "frames/wind700/f234.jpg",
+        "wind500": "frames/wind500/f234.jpg",
+        "wind300": "frames/wind300/f234.jpg"
       },
       "init": "2026-10-01T12:00:00Z"
     },
@@ -1085,7 +1349,13 @@
         "wind10_p90": "frames/wind10_p90/f240.jpg",
         "wind10": "frames/wind10/f240.jpg",
         "station_t": "frames/station_t/f240.jpg",
-        "qpf_acc": "frames/qpf_acc/f240.jpg"
+        "qpf_acc": "frames/qpf_acc/f240.jpg",
+        "h500": "frames/h500/f240.jpg",
+        "t850": "frames/t850/f240.jpg",
+        "wind925": "frames/wind925/f240.jpg",
+        "wind700": "frames/wind700/f240.jpg",
+        "wind500": "frames/wind500/f240.jpg",
+        "wind300": "frames/wind300/f240.jpg"
       },
       "init": "2026-10-01T12:00:00Z"
     },
@@ -1098,7 +1368,13 @@
         "qpf1_imerg": "frames/qpf1_imerg/f246.jpg",
         "wind10": "frames/wind10/f246.jpg",
         "wind10_p90": "frames/wind10_p90/f246.jpg",
-        "qpf_acc": "frames/qpf_acc/f246.jpg"
+        "qpf_acc": "frames/qpf_acc/f246.jpg",
+        "h500": "frames/h500/f246.jpg",
+        "t850": "frames/t850/f246.jpg",
+        "wind925": "frames/wind925/f246.jpg",
+        "wind700": "frames/wind700/f246.jpg",
+        "wind500": "frames/wind500/f246.jpg",
+        "wind300": "frames/wind300/f246.jpg"
       },
       "init": "2026-10-01T12:00:00Z"
     },
@@ -1111,7 +1387,13 @@
         "wind10_p90": "frames/wind10_p90/f252.jpg",
         "wind10": "frames/wind10/f252.jpg",
         "slp": "frames/slp/f252.jpg",
-        "qpf_acc": "frames/qpf_acc/f252.jpg"
+        "qpf_acc": "frames/qpf_acc/f252.jpg",
+        "h500": "frames/h500/f252.jpg",
+        "t850": "frames/t850/f252.jpg",
+        "wind925": "frames/wind925/f252.jpg",
+        "wind700": "frames/wind700/f252.jpg",
+        "wind500": "frames/wind500/f252.jpg",
+        "wind300": "frames/wind300/f252.jpg"
       },
       "init": "2026-10-01T12:00:00Z"
     },
@@ -1124,7 +1406,13 @@
         "slp": "frames/slp/f258.jpg",
         "wind10": "frames/wind10/f258.jpg",
         "wind10_p90": "frames/wind10_p90/f258.jpg",
-        "qpf_acc": "frames/qpf_acc/f258.jpg"
+        "qpf_acc": "frames/qpf_acc/f258.jpg",
+        "h500": "frames/h500/f258.jpg",
+        "t850": "frames/t850/f258.jpg",
+        "wind925": "frames/wind925/f258.jpg",
+        "wind700": "frames/wind700/f258.jpg",
+        "wind500": "frames/wind500/f258.jpg",
+        "wind300": "frames/wind300/f258.jpg"
       },
       "init": "2026-10-01T12:00:00Z"
     },
@@ -1137,7 +1425,13 @@
         "slp": "frames/slp/f264.jpg",
         "wind10": "frames/wind10/f264.jpg",
         "wind10_p90": "frames/wind10_p90/f264.jpg",
-        "qpf_acc": "frames/qpf_acc/f264.jpg"
+        "qpf_acc": "frames/qpf_acc/f264.jpg",
+        "h500": "frames/h500/f264.jpg",
+        "t850": "frames/t850/f264.jpg",
+        "wind925": "frames/wind925/f264.jpg",
+        "wind700": "frames/wind700/f264.jpg",
+        "wind500": "frames/wind500/f264.jpg",
+        "wind300": "frames/wind300/f264.jpg"
       },
       "init": "2026-10-01T12:00:00Z"
     },
@@ -1150,7 +1444,13 @@
         "wind10": "frames/wind10/f270.jpg",
         "wind10_p90": "frames/wind10_p90/f270.jpg",
         "station_t": "frames/station_t/f270.jpg",
-        "qpf_acc": "frames/qpf_acc/f270.jpg"
+        "qpf_acc": "frames/qpf_acc/f270.jpg",
+        "h500": "frames/h500/f270.jpg",
+        "t850": "frames/t850/f270.jpg",
+        "wind925": "frames/wind925/f270.jpg",
+        "wind700": "frames/wind700/f270.jpg",
+        "wind500": "frames/wind500/f270.jpg",
+        "wind300": "frames/wind300/f270.jpg"
       },
       "init": "2026-10-01T12:00:00Z"
     },
@@ -1163,7 +1463,13 @@
         "wind10": "frames/wind10/f276.jpg",
         "wind10_p90": "frames/wind10_p90/f276.jpg",
         "slp": "frames/slp/f276.jpg",
-        "qpf_acc": "frames/qpf_acc/f276.jpg"
+        "qpf_acc": "frames/qpf_acc/f276.jpg",
+        "h500": "frames/h500/f276.jpg",
+        "t850": "frames/t850/f276.jpg",
+        "wind925": "frames/wind925/f276.jpg",
+        "wind700": "frames/wind700/f276.jpg",
+        "wind500": "frames/wind500/f276.jpg",
+        "wind300": "frames/wind300/f276.jpg"
       },
       "init": "2026-10-01T12:00:00Z"
     },
@@ -1176,7 +1482,13 @@
         "slp": "frames/slp/f282.jpg",
         "wind10_p90": "frames/wind10_p90/f282.jpg",
         "station_t": "frames/station_t/f282.jpg",
-        "qpf_acc": "frames/qpf_acc/f282.jpg"
+        "qpf_acc": "frames/qpf_acc/f282.jpg",
+        "h500": "frames/h500/f282.jpg",
+        "t850": "frames/t850/f282.jpg",
+        "wind925": "frames/wind925/f282.jpg",
+        "wind700": "frames/wind700/f282.jpg",
+        "wind500": "frames/wind500/f282.jpg",
+        "wind300": "frames/wind300/f282.jpg"
       },
       "init": "2026-10-01T12:00:00Z"
     },
@@ -1189,7 +1501,13 @@
         "slp": "frames/slp/f288.jpg",
         "wind10": "frames/wind10/f288.jpg",
         "wind10_p90": "frames/wind10_p90/f288.jpg",
-        "qpf_acc": "frames/qpf_acc/f288.jpg"
+        "qpf_acc": "frames/qpf_acc/f288.jpg",
+        "h500": "frames/h500/f288.jpg",
+        "t850": "frames/t850/f288.jpg",
+        "wind925": "frames/wind925/f288.jpg",
+        "wind700": "frames/wind700/f288.jpg",
+        "wind500": "frames/wind500/f288.jpg",
+        "wind300": "frames/wind300/f288.jpg"
       },
       "init": "2026-10-01T12:00:00Z"
     },
@@ -1202,7 +1520,13 @@
         "qpf1_imerg": "frames/qpf1_imerg/f294.jpg",
         "wind10": "frames/wind10/f294.jpg",
         "wind10_p90": "frames/wind10_p90/f294.jpg",
-        "qpf_acc": "frames/qpf_acc/f294.jpg"
+        "qpf_acc": "frames/qpf_acc/f294.jpg",
+        "h500": "frames/h500/f294.jpg",
+        "t850": "frames/t850/f294.jpg",
+        "wind925": "frames/wind925/f294.jpg",
+        "wind700": "frames/wind700/f294.jpg",
+        "wind500": "frames/wind500/f294.jpg",
+        "wind300": "frames/wind300/f294.jpg"
       },
       "init": "2026-10-01T12:00:00Z"
     },
@@ -1215,7 +1539,13 @@
         "station_t": "frames/station_t/f300.jpg",
         "wind10_p90": "frames/wind10_p90/f300.jpg",
         "wind10": "frames/wind10/f300.jpg",
-        "qpf_acc": "frames/qpf_acc/f300.jpg"
+        "qpf_acc": "frames/qpf_acc/f300.jpg",
+        "h500": "frames/h500/f300.jpg",
+        "t850": "frames/t850/f300.jpg",
+        "wind925": "frames/wind925/f300.jpg",
+        "wind700": "frames/wind700/f300.jpg",
+        "wind500": "frames/wind500/f300.jpg",
+        "wind300": "frames/wind300/f300.jpg"
       },
       "init": "2026-10-01T12:00:00Z"
     },
@@ -1228,7 +1558,13 @@
         "qpf1_imerg": "frames/qpf1_imerg/f306.jpg",
         "wind10": "frames/wind10/f306.jpg",
         "wind10_p90": "frames/wind10_p90/f306.jpg",
-        "qpf_acc": "frames/qpf_acc/f306.jpg"
+        "qpf_acc": "frames/qpf_acc/f306.jpg",
+        "h500": "frames/h500/f306.jpg",
+        "t850": "frames/t850/f306.jpg",
+        "wind925": "frames/wind925/f306.jpg",
+        "wind700": "frames/wind700/f306.jpg",
+        "wind500": "frames/wind500/f306.jpg",
+        "wind300": "frames/wind300/f306.jpg"
       },
       "init": "2026-10-01T12:00:00Z"
     },
@@ -1241,7 +1577,13 @@
         "wind10": "frames/wind10/f312.jpg",
         "wind10_p90": "frames/wind10_p90/f312.jpg",
         "slp": "frames/slp/f312.jpg",
-        "qpf_acc": "frames/qpf_acc/f312.jpg"
+        "qpf_acc": "frames/qpf_acc/f312.jpg",
+        "h500": "frames/h500/f312.jpg",
+        "t850": "frames/t850/f312.jpg",
+        "wind925": "frames/wind925/f312.jpg",
+        "wind700": "frames/wind700/f312.jpg",
+        "wind500": "frames/wind500/f312.jpg",
+        "wind300": "frames/wind300/f312.jpg"
       },
       "init": "2026-10-01T12:00:00Z"
     },
@@ -1254,7 +1596,13 @@
         "wind10_p90": "frames/wind10_p90/f318.jpg",
         "station_t": "frames/station_t/f318.jpg",
         "wind10": "frames/wind10/f318.jpg",
-        "qpf_acc": "frames/qpf_acc/f318.jpg"
+        "qpf_acc": "frames/qpf_acc/f318.jpg",
+        "h500": "frames/h500/f318.jpg",
+        "t850": "frames/t850/f318.jpg",
+        "wind925": "frames/wind925/f318.jpg",
+        "wind700": "frames/wind700/f318.jpg",
+        "wind500": "frames/wind500/f318.jpg",
+        "wind300": "frames/wind300/f318.jpg"
       },
       "init": "2026-10-01T12:00:00Z"
     },
@@ -1267,7 +1615,13 @@
         "slp": "frames/slp/f324.jpg",
         "wind10": "frames/wind10/f324.jpg",
         "wind10_p90": "frames/wind10_p90/f324.jpg",
-        "qpf_acc": "frames/qpf_acc/f324.jpg"
+        "qpf_acc": "frames/qpf_acc/f324.jpg",
+        "h500": "frames/h500/f324.jpg",
+        "t850": "frames/t850/f324.jpg",
+        "wind925": "frames/wind925/f324.jpg",
+        "wind700": "frames/wind700/f324.jpg",
+        "wind500": "frames/wind500/f324.jpg",
+        "wind300": "frames/wind300/f324.jpg"
       },
       "init": "2026-10-01T12:00:00Z"
     },
@@ -1280,7 +1634,13 @@
         "slp": "frames/slp/f330.jpg",
         "wind10": "frames/wind10/f330.jpg",
         "wind10_p90": "frames/wind10_p90/f330.jpg",
-        "qpf_acc": "frames/qpf_acc/f330.jpg"
+        "qpf_acc": "frames/qpf_acc/f330.jpg",
+        "h500": "frames/h500/f330.jpg",
+        "t850": "frames/t850/f330.jpg",
+        "wind925": "frames/wind925/f330.jpg",
+        "wind700": "frames/wind700/f330.jpg",
+        "wind500": "frames/wind500/f330.jpg",
+        "wind300": "frames/wind300/f330.jpg"
       },
       "init": "2026-10-01T12:00:00Z"
     },
@@ -1293,7 +1653,13 @@
         "station_t": "frames/station_t/f336.jpg",
         "wind10": "frames/wind10/f336.jpg",
         "wind10_p90": "frames/wind10_p90/f336.jpg",
-        "qpf_acc": "frames/qpf_acc/f336.jpg"
+        "qpf_acc": "frames/qpf_acc/f336.jpg",
+        "h500": "frames/h500/f336.jpg",
+        "t850": "frames/t850/f336.jpg",
+        "wind925": "frames/wind925/f336.jpg",
+        "wind700": "frames/wind700/f336.jpg",
+        "wind500": "frames/wind500/f336.jpg",
+        "wind300": "frames/wind300/f336.jpg"
       },
       "init": "2026-10-01T12:00:00Z"
     },
@@ -1306,7 +1672,13 @@
         "wind10": "frames/wind10/f342.jpg",
         "station_t": "frames/station_t/f342.jpg",
         "wind10_p90": "frames/wind10_p90/f342.jpg",
-        "qpf_acc": "frames/qpf_acc/f342.jpg"
+        "qpf_acc": "frames/qpf_acc/f342.jpg",
+        "h500": "frames/h500/f342.jpg",
+        "t850": "frames/t850/f342.jpg",
+        "wind925": "frames/wind925/f342.jpg",
+        "wind700": "frames/wind700/f342.jpg",
+        "wind500": "frames/wind500/f342.jpg",
+        "wind300": "frames/wind300/f342.jpg"
       },
       "init": "2026-10-01T12:00:00Z"
     },
@@ -1319,7 +1691,13 @@
         "wind10": "frames/wind10/f348.jpg",
         "slp": "frames/slp/f348.jpg",
         "wind10_p90": "frames/wind10_p90/f348.jpg",
-        "qpf_acc": "frames/qpf_acc/f348.jpg"
+        "qpf_acc": "frames/qpf_acc/f348.jpg",
+        "h500": "frames/h500/f348.jpg",
+        "t850": "frames/t850/f348.jpg",
+        "wind925": "frames/wind925/f348.jpg",
+        "wind700": "frames/wind700/f348.jpg",
+        "wind500": "frames/wind500/f348.jpg",
+        "wind300": "frames/wind300/f348.jpg"
       },
       "init": "2026-10-01T12:00:00Z"
     },
@@ -1332,7 +1710,13 @@
         "slp": "frames/slp/f354.jpg",
         "wind10_p90": "frames/wind10_p90/f354.jpg",
         "wind10": "frames/wind10/f354.jpg",
-        "qpf_acc": "frames/qpf_acc/f354.jpg"
+        "qpf_acc": "frames/qpf_acc/f354.jpg",
+        "h500": "frames/h500/f354.jpg",
+        "t850": "frames/t850/f354.jpg",
+        "wind925": "frames/wind925/f354.jpg",
+        "wind700": "frames/wind700/f354.jpg",
+        "wind500": "frames/wind500/f354.jpg",
+        "wind300": "frames/wind300/f354.jpg"
       },
       "init": "2026-10-01T12:00:00Z"
     },
@@ -1345,13 +1729,19 @@
         "slp": "frames/slp/f360.jpg",
         "wind10_p90": "frames/wind10_p90/f360.jpg",
         "wind10": "frames/wind10/f360.jpg",
-        "qpf_acc": "frames/qpf_acc/f360.jpg"
+        "qpf_acc": "frames/qpf_acc/f360.jpg",
+        "h500": "frames/h500/f360.jpg",
+        "t850": "frames/t850/f360.jpg",
+        "wind925": "frames/wind925/f360.jpg",
+        "wind700": "frames/wind700/f360.jpg",
+        "wind500": "frames/wind500/f360.jpg",
+        "wind300": "frames/wind300/f360.jpg"
       },
       "init": "2026-10-01T12:00:00Z"
     }
   ],
   "hourly_init": "2026-10-01T11:00:00Z",
   "synoptic_init": "2026-10-01T12:00:00Z",
-  "ensemble_init": "2026-10-01T06:00:00Z",
-  "ensemble_note": "Upper air is the 64-member mean from the ensemble Zarr, 6-hourly synoptic inits only (not the free stats mean)."
+  "ensemble_note": "Upper air is the 64-member mean from the ensemble Zarr, 6-hourly synoptic inits only (not the free stats mean).",
+  "ensemble_init": "2026-10-01T12:00:00Z"
 }
