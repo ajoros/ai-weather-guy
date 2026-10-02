@@ -16,7 +16,7 @@ Written 2026-10-02. This is a record of the map, frame, and speed changes made o
 | --- | --- |
 | `167db831` | California region, map-frame lock, Natural Earth borders, one ensemble tarball |
 | `b1d0c70a` | Skip JPEGs that have not changed, cache each region's coastlines |
-| this commit | Overlap the next ensemble read with the current draw, write the surface manifest once per lead, keep a standing `gh-pages` checkout |
+| `a87db936` | Overlap the next ensemble read with the current draw, write the surface manifest once per lead, keep a standing `gh-pages` checkout |
 
 `bench_vm_size.sh`, `serve_windy.py`, `site/windy.html`, and `site/zoom.html` are still untracked on purpose. They are experiments, not part of the live cook.
 
@@ -58,7 +58,7 @@ Look, schedule, fields, pressure contours, and wind overlays are unchanged. JPEG
 - `stage_pages.py` converts a PNG to JPEG only when the JPEG is missing or older than the PNG. Orphan JPEGs that are not in the manifest are deleted. Pacific Northwest and California are updated in place.
 - Coastline strokes are built once per region box and reused. Workers do not rebuild Natural Earth, and a cache hit does not call `apply_domain`.
 
-### This commit
+### `a87db936`
 
 1. **Standing publish checkout** (`deploy_pages.sh`).  
    The old script cloned all of `gh-pages` into a temp directory and deleted it. It now keeps one shallow checkout at:
