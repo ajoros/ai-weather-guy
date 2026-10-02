@@ -576,6 +576,11 @@ def main() -> None:
     t0 = time.time()
     done_by: dict[Path, dict[int, dict]] = {out: {} for out, _reg in regions}
     source = f"earthengine:{COL_01} hourly={hourly} synoptic={synoptic}"
+    expect: dict[tuple[str, int], int] = {}
+    for _start, hour, _valid, _fid, _spec, _dest, _force, _reg, out in jobs:
+        key = (str(out), hour)
+        expect[key] = expect.get(key, 0) + 1
+    seen: dict[tuple[str, int], int] = {}
     with ThreadPoolExecutor(max_workers=args.workers) as pool:
         futs = {
             pool.submit(fetch_one, start, hour, spec, dest, force, reg): (
@@ -596,22 +601,26 @@ def main() -> None:
             done = done_by[out]
             done.setdefault(hour, {"lead": hour, "valid": valid, "init": start, "files": {}})
             done[hour]["files"][fid] = f"frames/{fid}/f{hour:03d}.png"
-            extra_out = extra
-            if reg.get("place"):
-                extra_out = {
-                    **extra,
-                    "domain": {"lat": list(reg["lat"]), "lon_360": list(reg["lon"])},
-                    "note": extra["note"] + f" {reg['place']}: {cook.domain_box_label(reg)}.",
-                }
-            merge_manifest(
-                out,
-                run=run,
-                init=hourly,
-                source=source,
-                new_ids=field_ids,
-                done_hours=done,
-                extra=extra_out,
-            )
+            key = (str(out), hour)
+            seen[key] = seen.get(key, 0) + 1
+            # One rewrite per lead, after that hour's fields exist. Same manifest at the end.
+            if seen[key] == expect[key]:
+                extra_out = extra
+                if reg.get("place"):
+                    extra_out = {
+                        **extra,
+                        "domain": {"lat": list(reg["lat"]), "lon_360": list(reg["lon"])},
+                        "note": extra["note"] + f" {reg['place']}: {cook.domain_box_label(reg)}.",
+                    }
+                merge_manifest(
+                    out,
+                    run=run,
+                    init=hourly,
+                    source=source,
+                    new_ids=field_ids,
+                    done_hours=done,
+                    extra=extra_out,
+                )
             print(f"  {msg}  {n}/{len(jobs)}  {time.time() - t0:.0f}s", flush=True)
 
     assert any(done_by.values()), "no frames"

@@ -29,6 +29,7 @@ plots/
 
 # Local research notes — not the public repo
 WEATHERNEXT3_*.md
+!WEATHERNEXT3_SITE_UPDATES.md
 
 # Regenerated at deploy
 site/runs/status.json

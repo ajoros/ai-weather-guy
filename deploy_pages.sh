@@ -29,16 +29,24 @@ while ! mkdir "$DEPLOCK" 2>/dev/null; do
 done
 echo $$ > "$DEPLOCK/pid"
 
-STAGE="$(mktemp -d "${TMPDIR:-/tmp}/wn3-pages.XXXXXX")"
-WORK="$STAGE/pages"
-trap 'rm -rf "$STAGE" "$DEPLOCK"' EXIT
+# Standing checkout. A fresh clone of every JPEG was most of an unchanged publish.
+WORK="${HOME}/Library/Application Support/ai-weather-guy/gh-pages"
+mkdir -p "$(dirname "$WORK")"
+trap 'rm -rf "$DEPLOCK"' EXIT
 
 test -f "$SITE/index.html"
-if git ls-remote --heads "$ORIGIN" gh-pages | grep -q gh-pages; then
-  echo "cloning published site" >&2
-  git clone --depth 1 --branch gh-pages "$ORIGIN" "$WORK"
+if [ ! -d "$WORK/.git" ]; then
+  rm -rf "$WORK"
+  if git ls-remote --heads "$ORIGIN" gh-pages | grep -q gh-pages; then
+    echo "cloning published site" >&2
+    git clone --depth 1 --branch gh-pages "$ORIGIN" "$WORK"
+  else
+    git init -q "$WORK"
+  fi
 else
-  git init -q "$WORK"
+  echo "updating published site" >&2
+  git -C "$WORK" fetch --depth 1 origin gh-pages
+  git -C "$WORK" reset --hard FETCH_HEAD
 fi
 
 echo "staging JPEGs from $SITE" >&2

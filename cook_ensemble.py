@@ -16,6 +16,7 @@ import json
 import os
 import sys
 import time
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
@@ -107,24 +108,35 @@ def latest_ens(project_id: str) -> tuple[str, xr.Dataset, str]:
     raise SystemExit(f"Could not open ensemble synoptic Zarr. Last error: {last}")
 
 
-def crop25(da: xr.DataArray) -> xr.DataArray:
-    return da.sel(lat_0p25=slice(LAT0, LAT1), lon_0p25=slice(LON0, LON1))
+def crop25(da: xr.DataArray, box: tuple[float, float, float, float] | None = None) -> xr.DataArray:
+    if box is None:
+        lat0, lat1, lon0, lon1 = LAT0, LAT1, LON0, LON1
+    else:
+        lat0, lat1, lon0, lon1 = box
+    return da.sel(lat_0p25=slice(lat0, lat1), lon_0p25=slice(lon0, lon1))
 
 
-def mean_level(ds: xr.Dataset, var: str, hour: int, level: int, members: int) -> xr.DataArray:
+def mean_level(
+    ds: xr.Dataset,
+    var: str,
+    hour: int,
+    level: int,
+    members: int,
+    box: tuple[float, float, float, float] | None = None,
+) -> xr.DataArray:
     sl = ds[var].sel(lead_time=np.timedelta64(hour, "h"), level=level)
     if members < int(ds.sizes.get("sample", 64)):
         sl = sl.isel(sample=slice(0, members))
-    return crop25(sl.mean("sample")).load()
+    return crop25(sl.mean("sample"), box).load()
 
 
 def ensemble_leads(limit: int = 360) -> list[int]:
     return [h for h in range(6, limit + 1, 6) if h in set(display_leads())]
 
 
-def load_uv(ds: xr.Dataset, hour: int, lev: int, members: int):
-    u = mean_level(ds, "u_component_of_wind", hour, lev, members)
-    v = mean_level(ds, "v_component_of_wind", hour, lev, members)
+def load_uv(ds: xr.Dataset, hour: int, lev: int, members: int, box=None):
+    u = mean_level(ds, "u_component_of_wind", hour, lev, members, box)
+    v = mean_level(ds, "v_component_of_wind", hour, lev, members, box)
     uu, vv = np.asarray(u), np.asarray(v)
     return np.asarray(u.lon_0p25), np.asarray(u.lat_0p25), uu, vv
 
@@ -258,6 +270,63 @@ def _save_crop(
     dest.with_suffix(".init").write_text(start + "\n")
 
 
+def _load_field(ds: xr.Dataset, start: str, hour: int, fid: str, members: int, box):
+    """Read one wide-domain field. box is captured by the caller so a crop cannot change it."""
+    spec = FIELDS[fid]
+    label, pal = spec[1], spec[4]
+    valid_dt = datetime.fromisoformat(start.replace("Z", "+00:00")) + timedelta(hours=hour)
+    contours = barbs = streamlines = None
+    contour_z = None
+    contour_color = "k"
+    contour_label_color = None
+    marks = None
+    note = "  64-mean" if members >= 64 else f"  {members}-mem"
+    if fid == "h500":
+        # ponytail: Pivotal 500H = wind-speed fill (kt) + height contours, not vorticity.
+        da = mean_level(ds, "geopotential", hour, 500, members, box)
+        lon, lat, uu, vv = load_uv(ds, hour, 500, members, box)
+        z = ms_to_kt(np.hypot(uu, vv))
+        contour_z = phi_to_dam(np.asarray(da))
+        contours = np.arange(468, 613, 3)
+        barbs = (lon, lat, uu * KT, vv * KT)
+        note += " + wind + 3 dam + barbs"
+    elif fid == "t850":
+        da = mean_level(ds, "temperature", hour, 850, members, box)
+        lon, lat, uu, vv = load_uv(ds, hour, 850, members, box)
+        z = k_to_c(np.asarray(da))
+        contour_z = z
+        contours = np.arange(-50, 51, 2)
+        contour_color = "w"
+        contour_label_color = "0.15"
+        barbs = (lon, lat, uu * KT, vv * KT)
+        note += " + isotherms + barbs"
+    else:
+        lon, lat, uu, vv = load_uv(ds, hour, WIND_LEVEL[fid], members, box)
+        z = ms_to_kt(np.hypot(uu, vv))
+        barbs = (lon, lat, uu * KT, vv * KT)
+        note += " + barbs"
+        if fid == "wind500":
+            h = mean_level(ds, "geopotential", hour, 500, members, box)
+            contour_z = phi_to_dam(np.asarray(h))
+            contours = np.arange(468, 613, 6)
+            note += " + 500H 6 dam"
+    title = plot_title(label, note, valid_dt, start, hour)
+    return {
+        "lon": lon,
+        "lat": lat,
+        "z": z,
+        "contour_z": contour_z,
+        "contours": contours,
+        "barbs": barbs,
+        "streamlines": streamlines,
+        "marks": marks,
+        "contour_color": contour_color,
+        "contour_label_color": contour_label_color,
+        "title": title,
+        "pal": pal,
+    }
+
+
 def plot_one(
     ds: xr.Dataset,
     start: str,
@@ -267,6 +336,7 @@ def plot_one(
     members: int,
     force: bool,
     crops: list[tuple[str, Path, bool]] | None = None,
+    loaded: dict | None = None,
 ) -> str:
     crops = crops or []
     need_wide = force or not _fresh(dest, start)
@@ -277,46 +347,21 @@ def plot_one(
     ]
     if not need_wide and not need:
         return f"skip {fid} f{hour:03d}"
-    spec = FIELDS[fid]
-    label, pal = spec[1], spec[4]
-    valid_dt = datetime.fromisoformat(start.replace("Z", "+00:00")) + timedelta(hours=hour)
+    if loaded is None:
+        loaded = _load_field(ds, start, hour, fid, members, (LAT0, LAT1, LON0, LON1))
+    lon = loaded["lon"]
+    lat = loaded["lat"]
+    z = loaded["z"]
+    contour_z = loaded["contour_z"]
+    contours = loaded["contours"]
+    barbs = loaded["barbs"]
+    streamlines = loaded["streamlines"]
+    marks = loaded["marks"]
+    contour_color = loaded["contour_color"]
+    contour_label_color = loaded["contour_label_color"]
+    title = loaded["title"]
+    pal = loaded["pal"]
     dest.parent.mkdir(parents=True, exist_ok=True)
-    contours = barbs = streamlines = None
-    contour_z = None
-    contour_color = "k"
-    contour_label_color = None
-    marks = None
-    note = "  64-mean" if members >= 64 else f"  {members}-mem"
-    if fid == "h500":
-        # ponytail: Pivotal 500H = wind-speed fill (kt) + height contours, not vorticity.
-        da = mean_level(ds, "geopotential", hour, 500, members)
-        lon, lat, uu, vv = load_uv(ds, hour, 500, members)
-        z = ms_to_kt(np.hypot(uu, vv))
-        contour_z = phi_to_dam(np.asarray(da))
-        contours = np.arange(468, 613, 3)
-        barbs = (lon, lat, uu * KT, vv * KT)
-        note += " + wind + 3 dam + barbs"
-    elif fid == "t850":
-        da = mean_level(ds, "temperature", hour, 850, members)
-        lon, lat, uu, vv = load_uv(ds, hour, 850, members)
-        z = k_to_c(np.asarray(da))
-        contour_z = z
-        contours = np.arange(-50, 51, 2)
-        contour_color = "w"
-        contour_label_color = "0.15"
-        barbs = (lon, lat, uu * KT, vv * KT)
-        note += " + isotherms + barbs"
-    else:
-        lon, lat, uu, vv = load_uv(ds, hour, WIND_LEVEL[fid], members)
-        z = ms_to_kt(np.hypot(uu, vv))
-        barbs = (lon, lat, uu * KT, vv * KT)
-        note += " + barbs"
-        if fid == "wind500":
-            h = mean_level(ds, "geopotential", hour, 500, members)
-            contour_z = phi_to_dam(np.asarray(h))
-            contours = np.arange(468, 613, 6)
-            note += " + 500H 6 dam"
-    title = plot_title(label, note, valid_dt, start, hour)
     if need_wide:
         save_map(
             dest,
@@ -581,20 +626,61 @@ def main() -> None:
     )
     t0 = time.time()
     n = 0
-    jobs = len(leads) * len(field_ids)
-    for hour in leads:
-        for fid in field_ids:
+    seq = [(hour, fid) for hour in leads for fid in field_ids]
+    jobs = len(seq)
+    wide_box = (float(LAT0), float(LAT1), float(LON0), float(LON1))
+
+    def must_draw(hour: int, fid: str) -> bool:
+        dest = args.out / f"frames/{fid}/f{hour:03d}.png"
+        if args.force or not _fresh(dest, init):
+            return True
+        for _name, crop_out in _crop_outs(args):
+            cdest = crop_out / f"frames/{fid}/f{hour:03d}.png"
+            if crop_force[_name] or not _fresh(cdest, init):
+                return True
+        return False
+
+    # ponytail: one extra Zarr read in flight. Same bytes, overlapped with the draw.
+    # Ceiling: two maps of RAM. The read uses wide_box, not the crop bounds.
+    inflight: tuple[int, str, object] | None = None
+    with ThreadPoolExecutor(max_workers=1) as pool:
+        for i, (hour, fid) in enumerate(seq):
             dest = args.out / f"frames/{fid}/f{hour:03d}.png"
             crops = [
                 (name, crop_out / f"frames/{fid}/f{hour:03d}.png", crop_force[name])
                 for name, crop_out in _crop_outs(args)
             ]
-            msg = plot_one(ds, init, hour, fid, dest, args.members, args.force, crops)
+            loaded = None
+            if must_draw(hour, fid):
+                if inflight is not None and inflight[0] == hour and inflight[1] == fid:
+                    loaded = inflight[2].result()
+                    inflight = None
+                else:
+                    if inflight is not None:
+                        inflight[2].result()
+                        inflight = None
+                    loaded = _load_field(ds, init, hour, fid, args.members, wide_box)
+                nxt = next((pair for pair in seq[i + 1 :] if must_draw(*pair)), None)
+                if nxt is not None:
+                    inflight = (
+                        nxt[0],
+                        nxt[1],
+                        pool.submit(
+                            _load_field, ds, init, nxt[0], nxt[1], args.members, wide_box
+                        ),
+                    )
+            elif inflight is not None and inflight[0] == hour and inflight[1] == fid:
+                inflight[2].result()
+                inflight = None
+            msg = plot_one(
+                ds, init, hour, fid, dest, args.members, args.force, crops, loaded
+            )
             n += 1
             print(f"  {msg}  {n}/{jobs}  {time.time() - t0:.0f}s", flush=True)
-        merge_from_disk(args.out, field_ids, init, extra)
-        for name, crop_out in _crop_outs(args):
-            merge_from_disk(crop_out, field_ids, init, _crop_extra(extra, name))
+            if (i + 1) % len(field_ids) == 0:
+                merge_from_disk(args.out, field_ids, init, extra)
+                for name, crop_out in _crop_outs(args):
+                    merge_from_disk(crop_out, field_ids, init, _crop_extra(extra, name))
     ds.close()
     print(f"manifest {args.out / 'manifest.json'}  {time.time() - t0:.0f}s", flush=True)
     print("COOK_STATUS=updated", flush=True)
