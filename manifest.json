@@ -75,9 +75,29 @@
       "id": "wind300",
       "label": "300 mb wind",
       "units": "kt"
+    },
+    {
+      "id": "rh925",
+      "label": "925 mb relative humidity",
+      "units": "%"
+    },
+    {
+      "id": "rh850",
+      "label": "850 mb relative humidity",
+      "units": "%"
+    },
+    {
+      "id": "rh700",
+      "label": "700 mb relative humidity",
+      "units": "%"
+    },
+    {
+      "id": "rh500",
+      "label": "500 mb relative humidity",
+      "units": "%"
     }
   ],
-  "generated": "2026-10-02T21:30:31Z",
+  "generated": "2026-10-02T22:26:51Z",
   "frames": [
     {
       "lead": 1,
@@ -159,7 +179,11 @@
         "wind925": "frames/wind925/f006.jpg",
         "wind700": "frames/wind700/f006.jpg",
         "wind500": "frames/wind500/f006.jpg",
-        "wind300": "frames/wind300/f006.jpg"
+        "wind300": "frames/wind300/f006.jpg",
+        "rh925": "frames/rh925/f006.jpg",
+        "rh850": "frames/rh850/f006.jpg",
+        "rh700": "frames/rh700/f006.jpg",
+        "rh500": "frames/rh500/f006.jpg"
       },
       "init": "2026-10-02T14:00:00Z"
     },
@@ -243,7 +267,11 @@
         "wind925": "frames/wind925/f012.jpg",
         "wind700": "frames/wind700/f012.jpg",
         "wind500": "frames/wind500/f012.jpg",
-        "wind300": "frames/wind300/f012.jpg"
+        "wind300": "frames/wind300/f012.jpg",
+        "rh925": "frames/rh925/f012.jpg",
+        "rh850": "frames/rh850/f012.jpg",
+        "rh700": "frames/rh700/f012.jpg",
+        "rh500": "frames/rh500/f012.jpg"
       },
       "init": "2026-10-02T14:00:00Z"
     },
@@ -327,7 +355,11 @@
         "wind925": "frames/wind925/f018.jpg",
         "wind700": "frames/wind700/f018.jpg",
         "wind500": "frames/wind500/f018.jpg",
-        "wind300": "frames/wind300/f018.jpg"
+        "wind300": "frames/wind300/f018.jpg",
+        "rh925": "frames/rh925/f018.jpg",
+        "rh850": "frames/rh850/f018.jpg",
+        "rh700": "frames/rh700/f018.jpg",
+        "rh500": "frames/rh500/f018.jpg"
       },
       "init": "2026-10-02T14:00:00Z"
     },
@@ -411,7 +443,11 @@
         "wind925": "frames/wind925/f024.jpg",
         "wind700": "frames/wind700/f024.jpg",
         "wind500": "frames/wind500/f024.jpg",
-        "wind300": "frames/wind300/f024.jpg"
+        "wind300": "frames/wind300/f024.jpg",
+        "rh925": "frames/rh925/f024.jpg",
+        "rh850": "frames/rh850/f024.jpg",
+        "rh700": "frames/rh700/f024.jpg",
+        "rh500": "frames/rh500/f024.jpg"
       },
       "init": "2026-10-02T14:00:00Z"
     },
@@ -495,7 +531,11 @@
         "wind925": "frames/wind925/f030.jpg",
         "wind700": "frames/wind700/f030.jpg",
         "wind500": "frames/wind500/f030.jpg",
-        "wind300": "frames/wind300/f030.jpg"
+        "wind300": "frames/wind300/f030.jpg",
+        "rh925": "frames/rh925/f030.jpg",
+        "rh850": "frames/rh850/f030.jpg",
+        "rh700": "frames/rh700/f030.jpg",
+        "rh500": "frames/rh500/f030.jpg"
       },
       "init": "2026-10-02T14:00:00Z"
     },
@@ -579,7 +619,11 @@
         "wind925": "frames/wind925/f036.jpg",
         "wind700": "frames/wind700/f036.jpg",
         "wind500": "frames/wind500/f036.jpg",
-        "wind300": "frames/wind300/f036.jpg"
+        "wind300": "frames/wind300/f036.jpg",
+        "rh925": "frames/rh925/f036.jpg",
+        "rh850": "frames/rh850/f036.jpg",
+        "rh700": "frames/rh700/f036.jpg",
+        "rh500": "frames/rh500/f036.jpg"
       },
       "init": "2026-10-02T14:00:00Z"
     },
@@ -663,7 +707,11 @@
         "wind925": "frames/wind925/f042.jpg",
         "wind700": "frames/wind700/f042.jpg",
         "wind500": "frames/wind500/f042.jpg",
-        "wind300": "frames/wind300/f042.jpg"
+        "wind300": "frames/wind300/f042.jpg",
+        "rh925": "frames/rh925/f042.jpg",
+        "rh850": "frames/rh850/f042.jpg",
+        "rh700": "frames/rh700/f042.jpg",
+        "rh500": "frames/rh500/f042.jpg"
       },
       "init": "2026-10-02T14:00:00Z"
     },
@@ -747,7 +795,11 @@
         "wind925": "frames/wind925/f048.jpg",
         "wind700": "frames/wind700/f048.jpg",
         "wind500": "frames/wind500/f048.jpg",
-        "wind300": "frames/wind300/f048.jpg"
+        "wind300": "frames/wind300/f048.jpg",
+        "rh925": "frames/rh925/f048.jpg",
+        "rh850": "frames/rh850/f048.jpg",
+        "rh700": "frames/rh700/f048.jpg",
+        "rh500": "frames/rh500/f048.jpg"
       },
       "init": "2026-10-02T14:00:00Z"
     },
@@ -766,7 +818,11 @@
         "wind925": "frames/wind925/f054.jpg",
         "wind700": "frames/wind700/f054.jpg",
         "wind500": "frames/wind500/f054.jpg",
-        "wind300": "frames/wind300/f054.jpg"
+        "wind300": "frames/wind300/f054.jpg",
+        "rh925": "frames/rh925/f054.jpg",
+        "rh850": "frames/rh850/f054.jpg",
+        "rh700": "frames/rh700/f054.jpg",
+        "rh500": "frames/rh500/f054.jpg"
       },
       "init": "2026-10-02T12:00:00Z"
     },
@@ -785,7 +841,11 @@
         "wind925": "frames/wind925/f060.jpg",
         "wind700": "frames/wind700/f060.jpg",
         "wind500": "frames/wind500/f060.jpg",
-        "wind300": "frames/wind300/f060.jpg"
+        "wind300": "frames/wind300/f060.jpg",
+        "rh925": "frames/rh925/f060.jpg",
+        "rh850": "frames/rh850/f060.jpg",
+        "rh700": "frames/rh700/f060.jpg",
+        "rh500": "frames/rh500/f060.jpg"
       },
       "init": "2026-10-02T12:00:00Z"
     },
@@ -804,7 +864,11 @@
         "wind925": "frames/wind925/f066.jpg",
         "wind700": "frames/wind700/f066.jpg",
         "wind500": "frames/wind500/f066.jpg",
-        "wind300": "frames/wind300/f066.jpg"
+        "wind300": "frames/wind300/f066.jpg",
+        "rh925": "frames/rh925/f066.jpg",
+        "rh850": "frames/rh850/f066.jpg",
+        "rh700": "frames/rh700/f066.jpg",
+        "rh500": "frames/rh500/f066.jpg"
       },
       "init": "2026-10-02T12:00:00Z"
     },
@@ -823,7 +887,11 @@
         "wind925": "frames/wind925/f072.jpg",
         "wind700": "frames/wind700/f072.jpg",
         "wind500": "frames/wind500/f072.jpg",
-        "wind300": "frames/wind300/f072.jpg"
+        "wind300": "frames/wind300/f072.jpg",
+        "rh925": "frames/rh925/f072.jpg",
+        "rh850": "frames/rh850/f072.jpg",
+        "rh700": "frames/rh700/f072.jpg",
+        "rh500": "frames/rh500/f072.jpg"
       },
       "init": "2026-10-02T12:00:00Z"
     },
@@ -842,7 +910,11 @@
         "wind925": "frames/wind925/f078.jpg",
         "wind700": "frames/wind700/f078.jpg",
         "wind500": "frames/wind500/f078.jpg",
-        "wind300": "frames/wind300/f078.jpg"
+        "wind300": "frames/wind300/f078.jpg",
+        "rh925": "frames/rh925/f078.jpg",
+        "rh850": "frames/rh850/f078.jpg",
+        "rh700": "frames/rh700/f078.jpg",
+        "rh500": "frames/rh500/f078.jpg"
       },
       "init": "2026-10-02T12:00:00Z"
     },
@@ -861,7 +933,11 @@
         "wind925": "frames/wind925/f084.jpg",
         "wind700": "frames/wind700/f084.jpg",
         "wind500": "frames/wind500/f084.jpg",
-        "wind300": "frames/wind300/f084.jpg"
+        "wind300": "frames/wind300/f084.jpg",
+        "rh925": "frames/rh925/f084.jpg",
+        "rh850": "frames/rh850/f084.jpg",
+        "rh700": "frames/rh700/f084.jpg",
+        "rh500": "frames/rh500/f084.jpg"
       },
       "init": "2026-10-02T12:00:00Z"
     },
@@ -880,7 +956,11 @@
         "wind925": "frames/wind925/f090.jpg",
         "wind700": "frames/wind700/f090.jpg",
         "wind500": "frames/wind500/f090.jpg",
-        "wind300": "frames/wind300/f090.jpg"
+        "wind300": "frames/wind300/f090.jpg",
+        "rh925": "frames/rh925/f090.jpg",
+        "rh850": "frames/rh850/f090.jpg",
+        "rh700": "frames/rh700/f090.jpg",
+        "rh500": "frames/rh500/f090.jpg"
       },
       "init": "2026-10-02T12:00:00Z"
     },
@@ -899,7 +979,11 @@
         "wind925": "frames/wind925/f096.jpg",
         "wind700": "frames/wind700/f096.jpg",
         "wind500": "frames/wind500/f096.jpg",
-        "wind300": "frames/wind300/f096.jpg"
+        "wind300": "frames/wind300/f096.jpg",
+        "rh925": "frames/rh925/f096.jpg",
+        "rh850": "frames/rh850/f096.jpg",
+        "rh700": "frames/rh700/f096.jpg",
+        "rh500": "frames/rh500/f096.jpg"
       },
       "init": "2026-10-02T12:00:00Z"
     },
@@ -918,7 +1002,11 @@
         "wind925": "frames/wind925/f102.jpg",
         "wind700": "frames/wind700/f102.jpg",
         "wind500": "frames/wind500/f102.jpg",
-        "wind300": "frames/wind300/f102.jpg"
+        "wind300": "frames/wind300/f102.jpg",
+        "rh925": "frames/rh925/f102.jpg",
+        "rh850": "frames/rh850/f102.jpg",
+        "rh700": "frames/rh700/f102.jpg",
+        "rh500": "frames/rh500/f102.jpg"
       },
       "init": "2026-10-02T12:00:00Z"
     },
@@ -937,7 +1025,11 @@
         "wind925": "frames/wind925/f108.jpg",
         "wind700": "frames/wind700/f108.jpg",
         "wind500": "frames/wind500/f108.jpg",
-        "wind300": "frames/wind300/f108.jpg"
+        "wind300": "frames/wind300/f108.jpg",
+        "rh925": "frames/rh925/f108.jpg",
+        "rh850": "frames/rh850/f108.jpg",
+        "rh700": "frames/rh700/f108.jpg",
+        "rh500": "frames/rh500/f108.jpg"
       },
       "init": "2026-10-02T12:00:00Z"
     },
@@ -956,7 +1048,11 @@
         "wind925": "frames/wind925/f114.jpg",
         "wind700": "frames/wind700/f114.jpg",
         "wind500": "frames/wind500/f114.jpg",
-        "wind300": "frames/wind300/f114.jpg"
+        "wind300": "frames/wind300/f114.jpg",
+        "rh925": "frames/rh925/f114.jpg",
+        "rh850": "frames/rh850/f114.jpg",
+        "rh700": "frames/rh700/f114.jpg",
+        "rh500": "frames/rh500/f114.jpg"
       },
       "init": "2026-10-02T12:00:00Z"
     },
@@ -975,7 +1071,11 @@
         "wind925": "frames/wind925/f120.jpg",
         "wind700": "frames/wind700/f120.jpg",
         "wind500": "frames/wind500/f120.jpg",
-        "wind300": "frames/wind300/f120.jpg"
+        "wind300": "frames/wind300/f120.jpg",
+        "rh925": "frames/rh925/f120.jpg",
+        "rh850": "frames/rh850/f120.jpg",
+        "rh700": "frames/rh700/f120.jpg",
+        "rh500": "frames/rh500/f120.jpg"
       },
       "init": "2026-10-02T12:00:00Z"
     },
@@ -994,7 +1094,11 @@
         "wind925": "frames/wind925/f126.jpg",
         "wind700": "frames/wind700/f126.jpg",
         "wind500": "frames/wind500/f126.jpg",
-        "wind300": "frames/wind300/f126.jpg"
+        "wind300": "frames/wind300/f126.jpg",
+        "rh925": "frames/rh925/f126.jpg",
+        "rh850": "frames/rh850/f126.jpg",
+        "rh700": "frames/rh700/f126.jpg",
+        "rh500": "frames/rh500/f126.jpg"
       },
       "init": "2026-10-02T12:00:00Z"
     },
@@ -1013,7 +1117,11 @@
         "wind925": "frames/wind925/f132.jpg",
         "wind700": "frames/wind700/f132.jpg",
         "wind500": "frames/wind500/f132.jpg",
-        "wind300": "frames/wind300/f132.jpg"
+        "wind300": "frames/wind300/f132.jpg",
+        "rh925": "frames/rh925/f132.jpg",
+        "rh850": "frames/rh850/f132.jpg",
+        "rh700": "frames/rh700/f132.jpg",
+        "rh500": "frames/rh500/f132.jpg"
       },
       "init": "2026-10-02T12:00:00Z"
     },
@@ -1032,7 +1140,11 @@
         "wind925": "frames/wind925/f138.jpg",
         "wind700": "frames/wind700/f138.jpg",
         "wind500": "frames/wind500/f138.jpg",
-        "wind300": "frames/wind300/f138.jpg"
+        "wind300": "frames/wind300/f138.jpg",
+        "rh925": "frames/rh925/f138.jpg",
+        "rh850": "frames/rh850/f138.jpg",
+        "rh700": "frames/rh700/f138.jpg",
+        "rh500": "frames/rh500/f138.jpg"
       },
       "init": "2026-10-02T12:00:00Z"
     },
@@ -1051,7 +1163,11 @@
         "wind925": "frames/wind925/f144.jpg",
         "wind700": "frames/wind700/f144.jpg",
         "wind500": "frames/wind500/f144.jpg",
-        "wind300": "frames/wind300/f144.jpg"
+        "wind300": "frames/wind300/f144.jpg",
+        "rh925": "frames/rh925/f144.jpg",
+        "rh850": "frames/rh850/f144.jpg",
+        "rh700": "frames/rh700/f144.jpg",
+        "rh500": "frames/rh500/f144.jpg"
       },
       "init": "2026-10-02T12:00:00Z"
     },
@@ -1070,7 +1186,11 @@
         "wind925": "frames/wind925/f150.jpg",
         "wind700": "frames/wind700/f150.jpg",
         "wind500": "frames/wind500/f150.jpg",
-        "wind300": "frames/wind300/f150.jpg"
+        "wind300": "frames/wind300/f150.jpg",
+        "rh925": "frames/rh925/f150.jpg",
+        "rh850": "frames/rh850/f150.jpg",
+        "rh700": "frames/rh700/f150.jpg",
+        "rh500": "frames/rh500/f150.jpg"
       },
       "init": "2026-10-02T12:00:00Z"
     },
@@ -1089,7 +1209,11 @@
         "wind925": "frames/wind925/f156.jpg",
         "wind700": "frames/wind700/f156.jpg",
         "wind500": "frames/wind500/f156.jpg",
-        "wind300": "frames/wind300/f156.jpg"
+        "wind300": "frames/wind300/f156.jpg",
+        "rh925": "frames/rh925/f156.jpg",
+        "rh850": "frames/rh850/f156.jpg",
+        "rh700": "frames/rh700/f156.jpg",
+        "rh500": "frames/rh500/f156.jpg"
       },
       "init": "2026-10-02T12:00:00Z"
     },
@@ -1108,7 +1232,11 @@
         "wind925": "frames/wind925/f162.jpg",
         "wind700": "frames/wind700/f162.jpg",
         "wind500": "frames/wind500/f162.jpg",
-        "wind300": "frames/wind300/f162.jpg"
+        "wind300": "frames/wind300/f162.jpg",
+        "rh925": "frames/rh925/f162.jpg",
+        "rh850": "frames/rh850/f162.jpg",
+        "rh700": "frames/rh700/f162.jpg",
+        "rh500": "frames/rh500/f162.jpg"
       },
       "init": "2026-10-02T12:00:00Z"
     },
@@ -1127,7 +1255,11 @@
         "wind925": "frames/wind925/f168.jpg",
         "wind700": "frames/wind700/f168.jpg",
         "wind500": "frames/wind500/f168.jpg",
-        "wind300": "frames/wind300/f168.jpg"
+        "wind300": "frames/wind300/f168.jpg",
+        "rh925": "frames/rh925/f168.jpg",
+        "rh850": "frames/rh850/f168.jpg",
+        "rh700": "frames/rh700/f168.jpg",
+        "rh500": "frames/rh500/f168.jpg"
       },
       "init": "2026-10-02T12:00:00Z"
     },
@@ -1146,7 +1278,11 @@
         "wind925": "frames/wind925/f174.jpg",
         "wind700": "frames/wind700/f174.jpg",
         "wind500": "frames/wind500/f174.jpg",
-        "wind300": "frames/wind300/f174.jpg"
+        "wind300": "frames/wind300/f174.jpg",
+        "rh925": "frames/rh925/f174.jpg",
+        "rh850": "frames/rh850/f174.jpg",
+        "rh700": "frames/rh700/f174.jpg",
+        "rh500": "frames/rh500/f174.jpg"
       },
       "init": "2026-10-02T12:00:00Z"
     },
@@ -1165,7 +1301,11 @@
         "wind925": "frames/wind925/f180.jpg",
         "wind700": "frames/wind700/f180.jpg",
         "wind500": "frames/wind500/f180.jpg",
-        "wind300": "frames/wind300/f180.jpg"
+        "wind300": "frames/wind300/f180.jpg",
+        "rh925": "frames/rh925/f180.jpg",
+        "rh850": "frames/rh850/f180.jpg",
+        "rh700": "frames/rh700/f180.jpg",
+        "rh500": "frames/rh500/f180.jpg"
       },
       "init": "2026-10-02T12:00:00Z"
     },
@@ -1184,7 +1324,11 @@
         "wind925": "frames/wind925/f186.jpg",
         "wind700": "frames/wind700/f186.jpg",
         "wind500": "frames/wind500/f186.jpg",
-        "wind300": "frames/wind300/f186.jpg"
+        "wind300": "frames/wind300/f186.jpg",
+        "rh925": "frames/rh925/f186.jpg",
+        "rh850": "frames/rh850/f186.jpg",
+        "rh700": "frames/rh700/f186.jpg",
+        "rh500": "frames/rh500/f186.jpg"
       },
       "init": "2026-10-02T12:00:00Z"
     },
@@ -1203,7 +1347,11 @@
         "wind925": "frames/wind925/f192.jpg",
         "wind700": "frames/wind700/f192.jpg",
         "wind500": "frames/wind500/f192.jpg",
-        "wind300": "frames/wind300/f192.jpg"
+        "wind300": "frames/wind300/f192.jpg",
+        "rh925": "frames/rh925/f192.jpg",
+        "rh850": "frames/rh850/f192.jpg",
+        "rh700": "frames/rh700/f192.jpg",
+        "rh500": "frames/rh500/f192.jpg"
       },
       "init": "2026-10-02T12:00:00Z"
     },
@@ -1222,7 +1370,11 @@
         "wind925": "frames/wind925/f198.jpg",
         "wind700": "frames/wind700/f198.jpg",
         "wind500": "frames/wind500/f198.jpg",
-        "wind300": "frames/wind300/f198.jpg"
+        "wind300": "frames/wind300/f198.jpg",
+        "rh925": "frames/rh925/f198.jpg",
+        "rh850": "frames/rh850/f198.jpg",
+        "rh700": "frames/rh700/f198.jpg",
+        "rh500": "frames/rh500/f198.jpg"
       },
       "init": "2026-10-02T12:00:00Z"
     },
@@ -1241,7 +1393,11 @@
         "wind925": "frames/wind925/f204.jpg",
         "wind700": "frames/wind700/f204.jpg",
         "wind500": "frames/wind500/f204.jpg",
-        "wind300": "frames/wind300/f204.jpg"
+        "wind300": "frames/wind300/f204.jpg",
+        "rh925": "frames/rh925/f204.jpg",
+        "rh850": "frames/rh850/f204.jpg",
+        "rh700": "frames/rh700/f204.jpg",
+        "rh500": "frames/rh500/f204.jpg"
       },
       "init": "2026-10-02T12:00:00Z"
     },
@@ -1260,7 +1416,11 @@
         "wind925": "frames/wind925/f210.jpg",
         "wind700": "frames/wind700/f210.jpg",
         "wind500": "frames/wind500/f210.jpg",
-        "wind300": "frames/wind300/f210.jpg"
+        "wind300": "frames/wind300/f210.jpg",
+        "rh925": "frames/rh925/f210.jpg",
+        "rh850": "frames/rh850/f210.jpg",
+        "rh700": "frames/rh700/f210.jpg",
+        "rh500": "frames/rh500/f210.jpg"
       },
       "init": "2026-10-02T12:00:00Z"
     },
@@ -1279,7 +1439,11 @@
         "wind925": "frames/wind925/f216.jpg",
         "wind700": "frames/wind700/f216.jpg",
         "wind500": "frames/wind500/f216.jpg",
-        "wind300": "frames/wind300/f216.jpg"
+        "wind300": "frames/wind300/f216.jpg",
+        "rh925": "frames/rh925/f216.jpg",
+        "rh850": "frames/rh850/f216.jpg",
+        "rh700": "frames/rh700/f216.jpg",
+        "rh500": "frames/rh500/f216.jpg"
       },
       "init": "2026-10-02T12:00:00Z"
     },
@@ -1298,7 +1462,11 @@
         "wind925": "frames/wind925/f222.jpg",
         "wind700": "frames/wind700/f222.jpg",
         "wind500": "frames/wind500/f222.jpg",
-        "wind300": "frames/wind300/f222.jpg"
+        "wind300": "frames/wind300/f222.jpg",
+        "rh925": "frames/rh925/f222.jpg",
+        "rh850": "frames/rh850/f222.jpg",
+        "rh700": "frames/rh700/f222.jpg",
+        "rh500": "frames/rh500/f222.jpg"
       },
       "init": "2026-10-02T12:00:00Z"
     },
@@ -1317,7 +1485,11 @@
         "wind925": "frames/wind925/f228.jpg",
         "wind700": "frames/wind700/f228.jpg",
         "wind500": "frames/wind500/f228.jpg",
-        "wind300": "frames/wind300/f228.jpg"
+        "wind300": "frames/wind300/f228.jpg",
+        "rh925": "frames/rh925/f228.jpg",
+        "rh850": "frames/rh850/f228.jpg",
+        "rh700": "frames/rh700/f228.jpg",
+        "rh500": "frames/rh500/f228.jpg"
       },
       "init": "2026-10-02T12:00:00Z"
     },
@@ -1336,7 +1508,11 @@
         "wind925": "frames/wind925/f234.jpg",
         "wind700": "frames/wind700/f234.jpg",
         "wind500": "frames/wind500/f234.jpg",
-        "wind300": "frames/wind300/f234.jpg"
+        "wind300": "frames/wind300/f234.jpg",
+        "rh925": "frames/rh925/f234.jpg",
+        "rh850": "frames/rh850/f234.jpg",
+        "rh700": "frames/rh700/f234.jpg",
+        "rh500": "frames/rh500/f234.jpg"
       },
       "init": "2026-10-02T12:00:00Z"
     },
@@ -1355,7 +1531,11 @@
         "wind925": "frames/wind925/f240.jpg",
         "wind700": "frames/wind700/f240.jpg",
         "wind500": "frames/wind500/f240.jpg",
-        "wind300": "frames/wind300/f240.jpg"
+        "wind300": "frames/wind300/f240.jpg",
+        "rh925": "frames/rh925/f240.jpg",
+        "rh850": "frames/rh850/f240.jpg",
+        "rh700": "frames/rh700/f240.jpg",
+        "rh500": "frames/rh500/f240.jpg"
       },
       "init": "2026-10-02T12:00:00Z"
     },
@@ -1374,7 +1554,11 @@
         "wind925": "frames/wind925/f246.jpg",
         "wind700": "frames/wind700/f246.jpg",
         "wind500": "frames/wind500/f246.jpg",
-        "wind300": "frames/wind300/f246.jpg"
+        "wind300": "frames/wind300/f246.jpg",
+        "rh925": "frames/rh925/f246.jpg",
+        "rh850": "frames/rh850/f246.jpg",
+        "rh700": "frames/rh700/f246.jpg",
+        "rh500": "frames/rh500/f246.jpg"
       },
       "init": "2026-10-02T12:00:00Z"
     },
@@ -1393,7 +1577,11 @@
         "wind925": "frames/wind925/f252.jpg",
         "wind700": "frames/wind700/f252.jpg",
         "wind500": "frames/wind500/f252.jpg",
-        "wind300": "frames/wind300/f252.jpg"
+        "wind300": "frames/wind300/f252.jpg",
+        "rh925": "frames/rh925/f252.jpg",
+        "rh850": "frames/rh850/f252.jpg",
+        "rh700": "frames/rh700/f252.jpg",
+        "rh500": "frames/rh500/f252.jpg"
       },
       "init": "2026-10-02T12:00:00Z"
     },
@@ -1412,7 +1600,11 @@
         "wind925": "frames/wind925/f258.jpg",
         "wind700": "frames/wind700/f258.jpg",
         "wind500": "frames/wind500/f258.jpg",
-        "wind300": "frames/wind300/f258.jpg"
+        "wind300": "frames/wind300/f258.jpg",
+        "rh925": "frames/rh925/f258.jpg",
+        "rh850": "frames/rh850/f258.jpg",
+        "rh700": "frames/rh700/f258.jpg",
+        "rh500": "frames/rh500/f258.jpg"
       },
       "init": "2026-10-02T12:00:00Z"
     },
@@ -1431,7 +1623,11 @@
         "wind925": "frames/wind925/f264.jpg",
         "wind700": "frames/wind700/f264.jpg",
         "wind500": "frames/wind500/f264.jpg",
-        "wind300": "frames/wind300/f264.jpg"
+        "wind300": "frames/wind300/f264.jpg",
+        "rh925": "frames/rh925/f264.jpg",
+        "rh850": "frames/rh850/f264.jpg",
+        "rh700": "frames/rh700/f264.jpg",
+        "rh500": "frames/rh500/f264.jpg"
       },
       "init": "2026-10-02T12:00:00Z"
     },
@@ -1450,7 +1646,11 @@
         "wind925": "frames/wind925/f270.jpg",
         "wind700": "frames/wind700/f270.jpg",
         "wind500": "frames/wind500/f270.jpg",
-        "wind300": "frames/wind300/f270.jpg"
+        "wind300": "frames/wind300/f270.jpg",
+        "rh925": "frames/rh925/f270.jpg",
+        "rh850": "frames/rh850/f270.jpg",
+        "rh700": "frames/rh700/f270.jpg",
+        "rh500": "frames/rh500/f270.jpg"
       },
       "init": "2026-10-02T12:00:00Z"
     },
@@ -1469,7 +1669,11 @@
         "wind925": "frames/wind925/f276.jpg",
         "wind700": "frames/wind700/f276.jpg",
         "wind500": "frames/wind500/f276.jpg",
-        "wind300": "frames/wind300/f276.jpg"
+        "wind300": "frames/wind300/f276.jpg",
+        "rh925": "frames/rh925/f276.jpg",
+        "rh850": "frames/rh850/f276.jpg",
+        "rh700": "frames/rh700/f276.jpg",
+        "rh500": "frames/rh500/f276.jpg"
       },
       "init": "2026-10-02T12:00:00Z"
     },
@@ -1488,7 +1692,11 @@
         "wind925": "frames/wind925/f282.jpg",
         "wind700": "frames/wind700/f282.jpg",
         "wind500": "frames/wind500/f282.jpg",
-        "wind300": "frames/wind300/f282.jpg"
+        "wind300": "frames/wind300/f282.jpg",
+        "rh925": "frames/rh925/f282.jpg",
+        "rh850": "frames/rh850/f282.jpg",
+        "rh700": "frames/rh700/f282.jpg",
+        "rh500": "frames/rh500/f282.jpg"
       },
       "init": "2026-10-02T12:00:00Z"
     },
@@ -1507,7 +1715,11 @@
         "wind925": "frames/wind925/f288.jpg",
         "wind700": "frames/wind700/f288.jpg",
         "wind500": "frames/wind500/f288.jpg",
-        "wind300": "frames/wind300/f288.jpg"
+        "wind300": "frames/wind300/f288.jpg",
+        "rh925": "frames/rh925/f288.jpg",
+        "rh850": "frames/rh850/f288.jpg",
+        "rh700": "frames/rh700/f288.jpg",
+        "rh500": "frames/rh500/f288.jpg"
       },
       "init": "2026-10-02T12:00:00Z"
     },
@@ -1526,7 +1738,11 @@
         "wind925": "frames/wind925/f294.jpg",
         "wind700": "frames/wind700/f294.jpg",
         "wind500": "frames/wind500/f294.jpg",
-        "wind300": "frames/wind300/f294.jpg"
+        "wind300": "frames/wind300/f294.jpg",
+        "rh925": "frames/rh925/f294.jpg",
+        "rh850": "frames/rh850/f294.jpg",
+        "rh700": "frames/rh700/f294.jpg",
+        "rh500": "frames/rh500/f294.jpg"
       },
       "init": "2026-10-02T12:00:00Z"
     },
@@ -1545,7 +1761,11 @@
         "wind925": "frames/wind925/f300.jpg",
         "wind700": "frames/wind700/f300.jpg",
         "wind500": "frames/wind500/f300.jpg",
-        "wind300": "frames/wind300/f300.jpg"
+        "wind300": "frames/wind300/f300.jpg",
+        "rh925": "frames/rh925/f300.jpg",
+        "rh850": "frames/rh850/f300.jpg",
+        "rh700": "frames/rh700/f300.jpg",
+        "rh500": "frames/rh500/f300.jpg"
       },
       "init": "2026-10-02T12:00:00Z"
     },
@@ -1564,7 +1784,11 @@
         "wind925": "frames/wind925/f306.jpg",
         "wind700": "frames/wind700/f306.jpg",
         "wind500": "frames/wind500/f306.jpg",
-        "wind300": "frames/wind300/f306.jpg"
+        "wind300": "frames/wind300/f306.jpg",
+        "rh925": "frames/rh925/f306.jpg",
+        "rh850": "frames/rh850/f306.jpg",
+        "rh700": "frames/rh700/f306.jpg",
+        "rh500": "frames/rh500/f306.jpg"
       },
       "init": "2026-10-02T12:00:00Z"
     },
@@ -1583,7 +1807,11 @@
         "wind925": "frames/wind925/f312.jpg",
         "wind700": "frames/wind700/f312.jpg",
         "wind500": "frames/wind500/f312.jpg",
-        "wind300": "frames/wind300/f312.jpg"
+        "wind300": "frames/wind300/f312.jpg",
+        "rh925": "frames/rh925/f312.jpg",
+        "rh850": "frames/rh850/f312.jpg",
+        "rh700": "frames/rh700/f312.jpg",
+        "rh500": "frames/rh500/f312.jpg"
       },
       "init": "2026-10-02T12:00:00Z"
     },
@@ -1602,7 +1830,11 @@
         "wind925": "frames/wind925/f318.jpg",
         "wind700": "frames/wind700/f318.jpg",
         "wind500": "frames/wind500/f318.jpg",
-        "wind300": "frames/wind300/f318.jpg"
+        "wind300": "frames/wind300/f318.jpg",
+        "rh925": "frames/rh925/f318.jpg",
+        "rh850": "frames/rh850/f318.jpg",
+        "rh700": "frames/rh700/f318.jpg",
+        "rh500": "frames/rh500/f318.jpg"
       },
       "init": "2026-10-02T12:00:00Z"
     },
@@ -1621,7 +1853,11 @@
         "wind925": "frames/wind925/f324.jpg",
         "wind700": "frames/wind700/f324.jpg",
         "wind500": "frames/wind500/f324.jpg",
-        "wind300": "frames/wind300/f324.jpg"
+        "wind300": "frames/wind300/f324.jpg",
+        "rh925": "frames/rh925/f324.jpg",
+        "rh850": "frames/rh850/f324.jpg",
+        "rh700": "frames/rh700/f324.jpg",
+        "rh500": "frames/rh500/f324.jpg"
       },
       "init": "2026-10-02T12:00:00Z"
     },
@@ -1640,7 +1876,11 @@
         "wind925": "frames/wind925/f330.jpg",
         "wind700": "frames/wind700/f330.jpg",
         "wind500": "frames/wind500/f330.jpg",
-        "wind300": "frames/wind300/f330.jpg"
+        "wind300": "frames/wind300/f330.jpg",
+        "rh925": "frames/rh925/f330.jpg",
+        "rh850": "frames/rh850/f330.jpg",
+        "rh700": "frames/rh700/f330.jpg",
+        "rh500": "frames/rh500/f330.jpg"
       },
       "init": "2026-10-02T12:00:00Z"
     },
@@ -1659,7 +1899,11 @@
         "wind925": "frames/wind925/f336.jpg",
         "wind700": "frames/wind700/f336.jpg",
         "wind500": "frames/wind500/f336.jpg",
-        "wind300": "frames/wind300/f336.jpg"
+        "wind300": "frames/wind300/f336.jpg",
+        "rh925": "frames/rh925/f336.jpg",
+        "rh850": "frames/rh850/f336.jpg",
+        "rh700": "frames/rh700/f336.jpg",
+        "rh500": "frames/rh500/f336.jpg"
       },
       "init": "2026-10-02T12:00:00Z"
     },
@@ -1678,7 +1922,11 @@
         "wind925": "frames/wind925/f342.jpg",
         "wind700": "frames/wind700/f342.jpg",
         "wind500": "frames/wind500/f342.jpg",
-        "wind300": "frames/wind300/f342.jpg"
+        "wind300": "frames/wind300/f342.jpg",
+        "rh925": "frames/rh925/f342.jpg",
+        "rh850": "frames/rh850/f342.jpg",
+        "rh700": "frames/rh700/f342.jpg",
+        "rh500": "frames/rh500/f342.jpg"
       },
       "init": "2026-10-02T12:00:00Z"
     },
@@ -1697,7 +1945,11 @@
         "wind925": "frames/wind925/f348.jpg",
         "wind700": "frames/wind700/f348.jpg",
         "wind500": "frames/wind500/f348.jpg",
-        "wind300": "frames/wind300/f348.jpg"
+        "wind300": "frames/wind300/f348.jpg",
+        "rh925": "frames/rh925/f348.jpg",
+        "rh850": "frames/rh850/f348.jpg",
+        "rh700": "frames/rh700/f348.jpg",
+        "rh500": "frames/rh500/f348.jpg"
       },
       "init": "2026-10-02T12:00:00Z"
     },
@@ -1716,7 +1968,11 @@
         "wind925": "frames/wind925/f354.jpg",
         "wind700": "frames/wind700/f354.jpg",
         "wind500": "frames/wind500/f354.jpg",
-        "wind300": "frames/wind300/f354.jpg"
+        "wind300": "frames/wind300/f354.jpg",
+        "rh925": "frames/rh925/f354.jpg",
+        "rh850": "frames/rh850/f354.jpg",
+        "rh700": "frames/rh700/f354.jpg",
+        "rh500": "frames/rh500/f354.jpg"
       },
       "init": "2026-10-02T12:00:00Z"
     },
@@ -1735,13 +1991,17 @@
         "wind925": "frames/wind925/f360.jpg",
         "wind700": "frames/wind700/f360.jpg",
         "wind500": "frames/wind500/f360.jpg",
-        "wind300": "frames/wind300/f360.jpg"
+        "wind300": "frames/wind300/f360.jpg",
+        "rh925": "frames/rh925/f360.jpg",
+        "rh850": "frames/rh850/f360.jpg",
+        "rh700": "frames/rh700/f360.jpg",
+        "rh500": "frames/rh500/f360.jpg"
       },
       "init": "2026-10-02T12:00:00Z"
     }
   ],
   "hourly_init": "2026-10-02T14:00:00Z",
   "synoptic_init": "2026-10-02T12:00:00Z",
-  "ensemble_init": "2026-10-02T12:00:00Z",
-  "ensemble_note": "Upper air is the 64-member mean from the ensemble Zarr, 6-hourly synoptic inits only (not the free stats mean)."
+  "ensemble_note": "Upper air is the 64-member mean from the ensemble Zarr, 6-hourly synoptic inits only (not the free stats mean).",
+  "ensemble_init": "2026-10-02T12:00:00Z"
 }
