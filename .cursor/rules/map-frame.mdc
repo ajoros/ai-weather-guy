@@ -1,0 +1,15 @@
+---
+description: Keep WeatherNext map frames on their region. World coastlines must not zoom the plot.
+globs: cook.py,cook_ee.py
+alwaysApply: false
+---
+
+# Map frame
+
+Surface and ensemble maps stay inside the named domain (`wide`, `pnw`, or `ca`). Never let a coastline, border, or overlay change the axes.
+
+- Call `ax.set_autoscale_on(False)` and set xlim/ylim to that domain before drawing anything on top of the field.
+- `add_boundaries` must plot with `scalex=False, scaley=False`.
+- Outline points outside the domain are NaN. Do not draw a full Natural Earth ring, and do not paint Earth Engine country lines (`USDOS/LSIB`) onto thumbnails. That layer drew a false 40°N line.
+- After a frame change, recook the affected region and check one image: the latitude span stays the domain span, not the whole world.
+- `test_cook.py` asserts California boundaries do not zoom the axes. Do not delete that check.

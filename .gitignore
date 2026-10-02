@@ -9,6 +9,8 @@ site/frames/
 site/manifest.json
 site/pnw/frames/
 site/pnw/manifest.json
+site/ca/frames/
+site/ca/manifest.json
 site/**/.manifest.lock
 
 # Local preview clips

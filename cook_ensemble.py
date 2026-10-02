@@ -196,6 +196,68 @@ def _fresh(dest: Path, start: str) -> bool:
         return False
 
 
+def _save_crop(
+    name: str,
+    dest: Path,
+    start: str,
+    lon,
+    lat,
+    z,
+    contour_z,
+    barbs,
+    title: str,
+    pal,
+    contours,
+    contour_color: str,
+    contour_label_color,
+    streamlines,
+    marks,
+) -> None:
+    # Same loaded arrays. Chunks are global, so a second .load() would re-read them.
+    reg = cook.DOMAINS[name]
+    box = (*reg["lat"], *reg["lon"])
+    arrays = [z]
+    if contour_z is not None:
+        arrays.append(contour_z)
+    if barbs is not None:
+        arrays.extend([barbs[2], barbs[3]])
+    parts = cook.subset_box(lon, lat, arrays, box)
+    plon, plat = parts[0], parts[1]
+    idx = 2
+    pz = parts[idx]
+    idx += 1
+    pz_c = None
+    if contour_z is not None:
+        pz_c = parts[idx]
+        idx += 1
+    pbarbs = None
+    if barbs is not None:
+        pbarbs = (plon, plat, parts[idx], parts[idx + 1])
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    cook.apply_domain(name)
+    try:
+        save_map(
+            dest,
+            plon,
+            plat,
+            pz,
+            title=title,
+            palette=pal,
+            contours=contours,
+            contour_data=pz_c,
+            contour_color=contour_color,
+            contour_label_color=contour_label_color,
+            barbs=pbarbs,
+            streamlines=streamlines,
+            marks=marks,
+        )
+    finally:
+        cook.apply_domain("wide")
+    if dest.stat().st_size < 1000:
+        raise RuntimeError(f"tiny PNG {dest}")
+    dest.with_suffix(".init").write_text(start + "\n")
+
+
 def plot_one(
     ds: xr.Dataset,
     start: str,
@@ -204,12 +266,16 @@ def plot_one(
     dest: Path,
     members: int,
     force: bool,
-    pnw_dest: Path | None = None,
-    pnw_force: bool = False,
+    crops: list[tuple[str, Path, bool]] | None = None,
 ) -> str:
+    crops = crops or []
     need_wide = force or not _fresh(dest, start)
-    need_pnw = pnw_dest is not None and (force or pnw_force or not _fresh(pnw_dest, start))
-    if not need_wide and not need_pnw:
+    need = [
+        (name, crop_dest)
+        for name, crop_dest, crop_force in crops
+        if crop_force or not _fresh(crop_dest, start)
+    ]
+    if not need_wide and not need:
         return f"skip {fid} f{hour:03d}"
     spec = FIELDS[fid]
     label, pal = spec[1], spec[4]
@@ -270,49 +336,24 @@ def plot_one(
         if dest.stat().st_size < 1000:
             raise RuntimeError(f"tiny PNG {dest}")
         dest.with_suffix(".init").write_text(start + "\n")
-    if need_pnw and pnw_dest is not None:
-        # Same loaded arrays. Chunks are global, so a second .load() would re-read them.
-        reg = cook.DOMAINS["pnw"]
-        box = (*reg["lat"], *reg["lon"])
-        arrays = [z]
-        if contour_z is not None:
-            arrays.append(contour_z)
-        if barbs is not None:
-            arrays.extend([barbs[2], barbs[3]])
-        parts = cook.subset_box(lon, lat, arrays, box)
-        plon, plat = parts[0], parts[1]
-        idx = 2
-        pz = parts[idx]
-        idx += 1
-        pz_c = None
-        if contour_z is not None:
-            pz_c = parts[idx]
-            idx += 1
-        pbarbs = None
-        if barbs is not None:
-            pbarbs = (plon, plat, parts[idx], parts[idx + 1])
-        cook.apply_domain("pnw")
-        try:
-            save_map(
-                pnw_dest,
-                plon,
-                plat,
-                pz,
-                title=title,
-                palette=pal,
-                contours=contours,
-                contour_data=pz_c,
-                contour_color=contour_color,
-                contour_label_color=contour_label_color,
-                barbs=pbarbs,
-                streamlines=streamlines,
-                marks=marks,
-            )
-        finally:
-            cook.apply_domain("wide")
-        if pnw_dest.stat().st_size < 1000:
-            raise RuntimeError(f"tiny PNG {pnw_dest}")
-        pnw_dest.with_suffix(".init").write_text(start + "\n")
+    for name, crop_dest in need:
+        _save_crop(
+            name,
+            crop_dest,
+            start,
+            lon,
+            lat,
+            z,
+            contour_z,
+            barbs,
+            title,
+            pal,
+            contours,
+            contour_color,
+            contour_label_color,
+            streamlines,
+            marks,
+        )
     return f"ok {fid} f{hour:03d}"
 
 
@@ -369,17 +410,60 @@ def _pngs_ready(out: Path, field_ids: list[str], leads: list[int]) -> bool:
     return all((out / f"frames/{fid}/f{h:03d}.png").exists() for fid in field_ids for h in leads)
 
 
-def _pnw_extra(extra: dict) -> dict:
-    reg = cook.DOMAINS["pnw"]
+def dest_is_live(out: Path) -> bool:
+    """False for a missing/empty Dropbox placeholder — do not start the VM for that dest."""
+    path = out / "manifest.json"
+    try:
+        if not path.exists() or path.stat().st_size < 10:
+            return False
+        m = read_manifest_or_empty(path)
+    except (SystemExit, OSError):
+        return False
+    return bool(
+        m.get("frames")
+        or m.get("init")
+        or m.get("hourly_init")
+        or m.get("ensemble_init")
+    )
+
+
+def ensemble_current(
+    out: Path,
+    field_ids: list[str],
+    init: str,
+    *,
+    domain: dict | None = None,
+) -> bool:
+    old = read_manifest_or_empty(out / "manifest.json")
+    if old.get("ensemble_init") != init:
+        return False
+    if not _pngs_ready(out, field_ids, ensemble_leads()):
+        return False
+    if domain is not None and not cook.domain_matches_manifest(old, domain):
+        return False
+    return True
+
+
+def _crop_extra(extra: dict, name: str) -> dict:
+    reg = cook.DOMAINS[name]
+    place = reg["place"]
     note = extra.get("note") or "Maps only — no downloadable grids."
-    if " Pacific Northwest:" in note:
-        note = note.split(" Pacific Northwest:")[0]
-    note = f"{note} Pacific Northwest: {cook.domain_box_label(reg)}."
+    marker = f" {place}:"
+    if marker in note:
+        note = note.split(marker)[0]
     return {
         **extra,
         "domain": {"lat": list(reg["lat"]), "lon_360": list(reg["lon"])},
-        "note": note,
+        "note": f"{note}{marker} {cook.domain_box_label(reg)}.",
     }
+
+
+def _crop_outs(args: argparse.Namespace) -> list[tuple[str, Path]]:
+    return [
+        (name, out)
+        for name, out in (("pnw", args.pnw_out), ("ca", args.ca_out))
+        if out is not None
+    ]
 
 
 def parse_args() -> argparse.Namespace:
@@ -393,6 +477,12 @@ def parse_args() -> argparse.Namespace:
         type=Path,
         default=None,
         help="also draw the pnw domain (40–55°N, 145–110°W) from the arrays already loaded",
+    )
+    p.add_argument(
+        "--ca-out",
+        type=Path,
+        default=None,
+        help="also draw the California domain (27–45°N, 145–110°W) from the arrays already loaded",
     )
     p.add_argument("--members", type=int, default=64)
     p.add_argument("--force", action="store_true")
@@ -423,29 +513,28 @@ def main() -> None:
             print(f"dropbox busy: {exc}", flush=True)
             return
         ds.close()
-        old = read_manifest_or_empty(args.out / "manifest.json")
-        leads = ensemble_leads()
-        have = _pngs_ready(args.out, field_ids, leads)
-        if args.pnw_out:
-            pnw_old = read_manifest_or_empty(args.pnw_out / "manifest.json")
-            have = (
-                have
-                and _pngs_ready(args.pnw_out, field_ids, leads)
-                and cook.domain_matches_manifest(pnw_old, cook.DOMAINS["pnw"])
-            )
         print(f"ENSEMBLE_INIT={init}", flush=True)
-        if old.get("ensemble_init") == init and have and not args.force:
-            print("COOK_STATUS=noop", flush=True)
-        else:
+        if args.force:
             print("COOK_STATUS=needed", flush=True)
+            return
+        # Placeholder wide site must not force a VM start when a crop is already current.
+        crops = _crop_outs(args)
+        ok = True
+        if dest_is_live(args.out) or not crops:
+            ok = ok and ensemble_current(args.out, field_ids, init)
+        for name, crop_out in crops:
+            ok = ok and ensemble_current(
+                crop_out, field_ids, init, domain=cook.DOMAINS[name]
+            )
+        print("COOK_STATUS=noop" if ok else "COOK_STATUS=needed", flush=True)
         return
     if args.merge_only:
         init = resolve_merge_init(args.init, args.out, field_ids)
         if not init:
             sys.exit("merge-only needs --init or .init stamps")
         extra["ensemble_init"] = init
-        if args.out.name == "pnw":
-            extra = _pnw_extra(extra)
+        if args.out.name in cook.DOMAINS and cook.DOMAINS[args.out.name].get("place"):
+            extra = _crop_extra(extra, args.out.name)
         merge_from_disk(args.out, field_ids, init, extra)
         print("COOK_STATUS=updated", flush=True)
         return
@@ -473,11 +562,13 @@ def main() -> None:
     )
     leads = [h for h in leads if h in set(ensemble_leads())]
     ready = _pngs_ready(args.out, field_ids, leads)
-    pnw_force = args.force
-    if args.pnw_out:
-        pnw_old = read_manifest_or_empty(args.pnw_out / "manifest.json")
-        pnw_force = pnw_force or not cook.domain_matches_manifest(pnw_old, cook.DOMAINS["pnw"])
-        ready = ready and _pngs_ready(args.pnw_out, field_ids, leads) and not pnw_force
+    crop_force = {name: args.force for name, _out in _crop_outs(args)}
+    for name, crop_out in _crop_outs(args):
+        crop_old = read_manifest_or_empty(crop_out / "manifest.json")
+        crop_force[name] = crop_force[name] or not cook.domain_matches_manifest(
+            crop_old, cook.DOMAINS[name]
+        )
+        ready = ready and _pngs_ready(crop_out, field_ids, leads) and not crop_force[name]
     if not args.force and not args.leads and old.get("ensemble_init") == init and ready:
         print(f"already latest ensemble {init}", flush=True)
         print("COOK_STATUS=noop", flush=True)
@@ -494,17 +585,16 @@ def main() -> None:
     for hour in leads:
         for fid in field_ids:
             dest = args.out / f"frames/{fid}/f{hour:03d}.png"
-            pnw_dest = (
-                args.pnw_out / f"frames/{fid}/f{hour:03d}.png" if args.pnw_out else None
-            )
-            msg = plot_one(
-                ds, init, hour, fid, dest, args.members, args.force, pnw_dest, pnw_force
-            )
+            crops = [
+                (name, crop_out / f"frames/{fid}/f{hour:03d}.png", crop_force[name])
+                for name, crop_out in _crop_outs(args)
+            ]
+            msg = plot_one(ds, init, hour, fid, dest, args.members, args.force, crops)
             n += 1
             print(f"  {msg}  {n}/{jobs}  {time.time() - t0:.0f}s", flush=True)
         merge_from_disk(args.out, field_ids, init, extra)
-        if args.pnw_out:
-            merge_from_disk(args.pnw_out, field_ids, init, _pnw_extra(extra))
+        for name, crop_out in _crop_outs(args):
+            merge_from_disk(crop_out, field_ids, init, _crop_extra(extra, name))
     ds.close()
     print(f"manifest {args.out / 'manifest.json'}  {time.time() - t0:.0f}s", flush=True)
     print("COOK_STATUS=updated", flush=True)

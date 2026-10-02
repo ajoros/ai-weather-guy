@@ -78,6 +78,11 @@ def main() -> None:
     assert wlon[0] <= plonb[0] <= plonb[1] <= wlon[1]
     assert plat == (40.0, 55.0) and plonb == (215.0, 250.0)
     assert cook.domain_box_label(cook.DOMAINS["pnw"]) == "40–55°N, 145–110°W"
+    clat, clonb = cook.DOMAINS["ca"]["lat"], cook.DOMAINS["ca"]["lon"]
+    assert wlat[0] <= clat[0] <= clat[1] <= wlat[1]
+    assert wlon[0] <= clonb[0] <= clonb[1] <= wlon[1]
+    assert clat == (27.0, 45.0) and clonb == (215.0, 250.0)
+    assert cook.domain_box_label(cook.DOMAINS["ca"]) == "27–45°N, 145–110°W"
     lon_g = np.linspace(120.0, 300.0, 181)
     lat_g = np.linspace(75.0, 10.0, 66)
     grid = np.arange(lat_g.size * lon_g.size).reshape(lat_g.size, lon_g.size)
@@ -87,11 +92,47 @@ def main() -> None:
     assert sz.shape == (slat.size, slon.size) and sz.size > 0
     cook.apply_domain("pnw")
     assert cook.LAT0 == 40.0 and cook.LON0 == 215.0 and cook.FIG_SIZE[1] < 8
+    cook.apply_domain("ca")
+    assert cook.LAT0 == 27.0 and cook.LAT1 == 45.0 and cook.LON0 == 215.0 and cook.FIG_SIZE[1] > 9
+    for lon, lat, _kw in cook._ne_lines():
+        dlon = np.abs(np.diff(lon))
+        dlat = np.abs(np.diff(lat))
+        mid = (lat[:-1] + lat[1:]) / 2
+        bad = (dlon > 2) & (dlon < 180) & (dlat < 0.25) & (np.abs(mid - 40) < 0.3)
+        assert not np.any(bad)
+    import matplotlib.pyplot as plt
+    fig, ax = plt.subplots()
+    ax.imshow(np.zeros((2, 2)), extent=[215, 250, 27, 45], origin="upper")
+    ax.set_autoscale_on(True)
+    cook.add_boundaries(ax)
+    x0, x1 = ax.get_xlim()
+    y0, y1 = ax.get_ylim()
+    plt.close(fig)
+    assert (x1 - x0) < 50 and (y1 - y0) < 30, (x0, x1, y0, y1)
     cook.apply_domain("wide")
     assert cook.LAT0 == 10.0 and cook.LON1 == 300.0
     from pathlib import Path
-    from cook_ensemble import resolve_merge_init, slp_marks
+    import tempfile
+    from cook_ensemble import dest_is_live, ensemble_current, ensemble_leads, resolve_merge_init, slp_marks
     assert resolve_merge_init("2026-09-26T06:00:00Z", Path("/tmp"), ["h500"]) == "2026-09-26T06:00:00Z"
+    with tempfile.TemporaryDirectory(dir="/tmp") as tmp:
+        out = Path(tmp)
+        init = "2026-09-28T00:00:00Z"
+        assert not dest_is_live(out)
+        (out / "manifest.json").write_text("")
+        assert not dest_is_live(out)
+        (out / "manifest.json").write_text(
+            json.dumps({"ensemble_init": init, "frames": [{"lead": 6}]})
+        )
+        assert dest_is_live(out)
+        assert not ensemble_current(out, ["h500"], init)
+        for hour in ensemble_leads():
+            png = out / f"frames/h500/f{hour:03d}.png"
+            png.parent.mkdir(parents=True, exist_ok=True)
+            png.write_bytes(b"x" * 2000)
+        assert ensemble_current(out, ["h500"], init)
+        assert not ensemble_current(out, ["h500"], "2026-09-28T06:00:00Z")
+        assert not ensemble_current(out, ["h500", "t850"], init)
     xx, yy = np.meshgrid(lon, lat)
     slp = 1020.0 + 0.2 * ((xx - 245.0) ** 2 + (yy - 35.0) ** 2)
     slp[10, 10] = 990.0

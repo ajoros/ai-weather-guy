@@ -74,7 +74,7 @@
       display: flex; align-items: center; gap: 10px;
       margin-top: 8px;
     }
-    .regions { display: flex; gap: 6px; flex-shrink: 0; }
+    .regions { display: flex; gap: 6px; flex-shrink: 0; flex-wrap: wrap; }
     a.region {
       background: #fff; color: #0b0c10; border: 1px solid #dadce0;
       border-radius: 999px; padding: 7px 14px; text-decoration: none; font: inherit;
@@ -189,6 +189,7 @@
       <nav class="regions" aria-label="Map region">
         <a class="region on" id="reg-wide" href="./">Wide</a>
         <a class="region" id="reg-pnw" href="pnw/">Pacific Northwest</a>
+        <a class="region" id="reg-ca" href="ca/">California</a>
         <a class="region" id="reg-runs" href="runs/">Runs</a>
       </nav>
       <button id="prev" type="button">←</button>
@@ -216,19 +217,24 @@
   </div>
   <script>
     const $ = (id) => document.getElementById(id);
-    const PNW = /\/pnw(\/|$)/.test(location.pathname);
+    const SUB = (location.pathname.match(/\/(pnw|ca)(\/|$)/) || [])[1] || "";
     const RUNS = /\/runs(\/|$)/.test(location.pathname);
-    const ROOT = PNW || RUNS ? "../" : "./";
+    const ROOT = SUB || RUNS ? "../" : "./";
     $("reg-wide").href = ROOT;
     $("reg-pnw").href = ROOT + "pnw/";
+    $("reg-ca").href = ROOT + "ca/";
     $("reg-runs").href = ROOT + "runs/";
-    if (PNW) {
-      document.title = "AI-Weather-Guy — Pacific Northwest";
-      document.documentElement.style.setProperty("--map-ratio", "7 / 3");
+    const CROP = {
+      pnw: { title: "Pacific Northwest", ratio: "7 / 3" },
+      ca: { title: "California", ratio: "35 / 18" },
+    };
+    if (SUB) {
+      document.title = "AI-Weather-Guy — " + CROP[SUB].title;
+      document.documentElement.style.setProperty("--map-ratio", CROP[SUB].ratio);
       const logo = document.querySelector(".logo");
       if (logo) logo.src = "../logo-mark.png";
       $("reg-wide").classList.remove("on");
-      $("reg-pnw").classList.add("on");
+      $("reg-" + SUB).classList.add("on");
     }
     const CLOUD_LAYERS = new Set(["cloud_low", "cloud_mid", "cloud_high"]);
     const CORE_IDS = ["station_t", "qpf1_imerg", "qpf_acc", "slp", "wind10", "wind10_p90"];

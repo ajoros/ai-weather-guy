@@ -75,12 +75,13 @@ def main() -> int:
         status = site / "runs" / "status.json"
         if status.is_file():
             shutil.copy2(status, runs_dest / "status.json")
-    pnw = site / "pnw" / "manifest.json"
-    if pnw.is_file() and pnw.stat().st_size > 0:
-        pnw_dest = dest / "pnw"
-        if pnw_dest.exists():
-            shutil.rmtree(pnw_dest)
-        n += stage(site / "pnw", pnw_dest, root=False)
+    for name in ("pnw", "ca"):
+        man = site / name / "manifest.json"
+        if man.is_file() and man.stat().st_size > 0:
+            crop_dest = dest / name
+            if crop_dest.exists():
+                shutil.rmtree(crop_dest)
+            n += stage(site / name, crop_dest, root=False)
     print(f"converted {n} maps", flush=True)
     return 0
 

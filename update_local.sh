@@ -65,7 +65,7 @@ EE_OK=1
 if take_lock "$ROOT/.cache/ee.lockdir"; then
   {
     echo "==== ee $(date -u +%Y-%m-%dT%H:%M:%SZ) ===="
-    "$ROOT/.venv/bin/python" "$ROOT/cook_ee.py" --workers 8 --fields core --pnw-out "$ROOT/site/pnw"
+    "$ROOT/.venv/bin/python" "$ROOT/cook_ee.py" --workers 8 --fields core --pnw-out "$ROOT/site/pnw" --ca-out "$ROOT/site/ca"
   } > "$EE_LOG" 2>&1 || EE_OK=0
   cat "$EE_LOG"
   maybe_deploy "$EE_LOG"

@@ -41,7 +41,9 @@ from plot_wn3_stats import (
     open_stats,
 )
 
-# wide: North America + northern Pacific. pnw: 40–55°N, 145–110°W.
+# wide: North America + northern Pacific.
+# pnw: 40–55°N, 145–110°W. ca: 27–45°N, 145–110°W.
+# fig/thumb height follows lon-span/lat-span so the crop is not stretched.
 DOMAINS = {
     "wide": {
         "name": "wide",
@@ -52,10 +54,19 @@ DOMAINS = {
     },
     "pnw": {
         "name": "pnw",
+        "place": "Pacific Northwest",
         "lat": (40.0, 55.0),
         "lon": (215.0, 250.0),
         "fig": (18.0, 7.71),
         "thumb": (2100, 900),
+    },
+    "ca": {
+        "name": "ca",
+        "place": "California",
+        "lat": (27.0, 45.0),
+        "lon": (215.0, 250.0),
+        "fig": (18.0, 9.26),
+        "thumb": (2100, 1080),
     },
 }
 LAT0, LAT1 = DOMAINS["wide"]["lat"]
@@ -718,6 +729,16 @@ def _ne_lines() -> list[tuple[np.ndarray, np.ndarray, dict]]:
                     continue
                 if np.nanmax(lon) < LON0 or np.nanmin(lon) > LON1:
                     continue
+                # A ring that touches the box still contains the rest of the world.
+                # NaN those points so the stroke stops at the frame instead of
+                # drawing a chord across the map.
+                outside = (lon < LON0) | (lon > LON1) | (lat < LAT0) | (lat > LAT1)
+                lon = lon.copy()
+                lat = lat.copy()
+                lon[outside] = np.nan
+                lat[outside] = np.nan
+                if not np.any(np.isfinite(lon)):
+                    continue
                 out.append((lon, lat, kw))
     _NE_CACHE[key] = out
     return out
@@ -782,9 +803,10 @@ def finish_map(fig, ax, mappable, pal, path: Path) -> None:
 
 def add_boundaries(ax) -> None:
     # Domain 120–300 never crosses 0°, so plain lon/lat + NE lines.
+    # scalex/scaley False: world coastlines must not zoom the map out.
     # Upgrade: cartopy 10m features if a 3.14 wheel appears.
     for lon, lat, kw in _ne_lines():
-        ax.plot(lon, lat, **kw)
+        ax.plot(lon, lat, scalex=False, scaley=False, **kw)
 
 
 def save_map(

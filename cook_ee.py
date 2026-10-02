@@ -7,7 +7,7 @@ and add the NWS colorbar. Same frames/manifest as cook.py.
     export GOOGLE_CLOUD_PROJECT=weathernext3-joros
     .venv/bin/python cook_ee.py
     .venv/bin/python cook_ee.py --fields core --leads 1,2,3
-    .venv/bin/python cook_ee.py --fields core --pnw-out site/pnw
+    .venv/bin/python cook_ee.py --fields core --pnw-out site/pnw --ca-out site/ca
     # default: latest hourly init for F+1–48, latest 15-day synoptic for F+54–360
 """
 
@@ -17,6 +17,7 @@ import argparse
 import json
 import os
 import sys
+import threading
 import time
 import urllib.error
 import urllib.request
@@ -211,10 +212,8 @@ def classify(img: ee.Image, bounds: np.ndarray) -> ee.Image:
     return out.where(img.gte(float(bounds[-1])), last)
 
 
-def paint_lines(rgb: ee.Image) -> ee.Image:
-    countries = ee.FeatureCollection("USDOS/LSIB_SIMPLE/2017")
-    states = ee.FeatureCollection("TIGER/2018/States")
-    return rgb.paint(countries, "111111", 1).paint(states, "444444", 1)
+# apply_domain mutates shared bounds. EE workers wrap thumbs at the same time.
+_bounds_lock = threading.Lock()
 
 
 def thumb_params(reg: dict) -> dict:
@@ -269,7 +268,7 @@ def field_image(start: str, hour: int, spec: tuple) -> ee.Image:
         max=len(PALETTES[pal]["colors"]) - 1,
         palette=list(PALETTES[pal]["colors"]),
     )
-    return paint_lines(rgb)
+    return rgb
 
 
 def compute_grid(img: ee.Image, dx: float, reg: dict):
@@ -325,6 +324,18 @@ def wrap_thumb(
     lon0, lon1 = reg["lon"]
     fig, ax = plt.subplots(figsize=reg["fig"], dpi=FIG_DPI)
     ax.imshow(arr, extent=[lon0, lon1, lat0, lat1], origin="upper", aspect="auto")
+    # Lock the window before any overlay. A coastline plot will zoom to the
+    # whole world if autoscale is still on.
+    ax.set_autoscale_on(False)
+    ax.set_xlim(lon0, lon1)
+    ax.set_ylim(lat0, lat1)
+    # LSIB country paint put a false 40°N stroke on the fine California grid.
+    with _bounds_lock:
+        cook.apply_domain(reg["name"])
+        try:
+            cook.add_boundaries(ax)
+        finally:
+            cook.apply_domain("wide")
     if contours is not None:
         lon, lat, z = contours
         cs = ax.contour(
@@ -482,6 +493,12 @@ def parse_args() -> argparse.Namespace:
         default=None,
         help="also draw the pnw domain (40–55°N, 145–110°W) into this directory",
     )
+    p.add_argument(
+        "--ca-out",
+        type=Path,
+        default=None,
+        help="also draw the California domain (27–45°N, 145–110°W) into this directory",
+    )
     p.add_argument("--workers", type=int, default=8)
     p.add_argument("--force", action="store_true")
     return p.parse_args()
@@ -522,6 +539,8 @@ def main() -> None:
     regions = [(args.out, cook.DOMAINS[args.domain])]
     if args.pnw_out and args.domain != "pnw":
         regions.append((args.pnw_out, cook.DOMAINS["pnw"]))
+    if args.ca_out and args.domain != "ca":
+        regions.append((args.ca_out, cook.DOMAINS["ca"]))
     force_by = {}
     for out, reg in regions:
         old_reg = load_manifest(out / "manifest.json") if (out / "manifest.json").exists() else {}
@@ -561,7 +580,7 @@ def main() -> None:
                 )
 
     # ponytail: one slider; F+1–48 and F+54–360 may be different inits.
-    # Ceiling: EE QPS; drop workers if 429s. PNW is a second thumb of the same images.
+    # Ceiling: EE QPS; drop workers if 429s. Crops are extra thumbs of the same images.
     t0 = time.time()
     done_by: dict[Path, dict[int, dict]] = {out: {} for out, _reg in regions}
     source = f"earthengine:{COL_01} hourly={hourly} synoptic={synoptic}"
@@ -586,11 +605,11 @@ def main() -> None:
             done.setdefault(hour, {"lead": hour, "valid": valid, "init": start, "files": {}})
             done[hour]["files"][fid] = f"frames/{fid}/f{hour:03d}.png"
             extra_out = extra
-            if reg["name"] == "pnw":
+            if reg.get("place"):
                 extra_out = {
                     **extra,
                     "domain": {"lat": list(reg["lat"]), "lon_360": list(reg["lon"])},
-                    "note": extra["note"] + f" Pacific Northwest: {cook.domain_box_label(reg)}.",
+                    "note": extra["note"] + f" {reg['place']}: {cook.domain_box_label(reg)}.",
                 }
             merge_manifest(
                 out,

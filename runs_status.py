@@ -126,9 +126,10 @@ def merge_log(prev: dict, current: dict, now: datetime | None = None) -> dict:
 
 def collect_runs(site: Path) -> dict:
     wide = scan_manifest(site / "manifest.json")
-    pnw = site / "pnw" / "manifest.json"
-    if pnw.is_file():
-        wide = _merge(wide, scan_manifest(pnw))
+    for name in ("pnw", "ca"):
+        man = site / name / "manifest.json"
+        if man.is_file():
+            wide = _merge(wide, scan_manifest(man))
     return {
         "fields": [
             {
