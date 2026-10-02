@@ -694,6 +694,8 @@ def _iter_rings(geom: dict):
 
 
 _NE_CACHE: dict[tuple[float, float, float, float], list[tuple[np.ndarray, np.ndarray, dict]]] = {}
+# One stroke per line style. Built once per domain, reused on every frame.
+_STROKE_CACHE: dict[tuple[float, float, float, float], list[tuple[np.ndarray, np.ndarray, dict]]] = {}
 
 
 def _ne_lines() -> list[tuple[np.ndarray, np.ndarray, dict]]:
@@ -801,11 +803,54 @@ def finish_map(fig, ax, mappable, pal, path: Path) -> None:
         tmp.unlink(missing_ok=True)
 
 
-def add_boundaries(ax) -> None:
+def _box_key(name: str | None = None) -> tuple[float, float, float, float]:
+    if name:
+        reg = DOMAINS[name]
+        lat0, lat1 = reg["lat"]
+        lon0, lon1 = reg["lon"]
+        return (float(lat0), float(lat1), float(lon0), float(lon1))
+    return (float(LAT0), float(LAT1), float(LON0), float(LON1))
+
+
+def _boundary_strokes(name: str | None = None) -> list[tuple[np.ndarray, np.ndarray, dict]]:
+    key = _box_key(name)
+    hit = _STROKE_CACHE.get(key)
+    if hit is not None:
+        return hit
+    if name:
+        apply_domain(name)
+    try:
+        groups: dict[tuple, list[tuple[np.ndarray, np.ndarray]]] = {}
+        for lon, lat, kw in _ne_lines():
+            sig = tuple(sorted(kw.items()))
+            groups.setdefault(sig, []).append((lon, lat))
+        strokes: list[tuple[np.ndarray, np.ndarray, dict]] = []
+        for sig, parts in groups.items():
+            xs: list[np.ndarray] = []
+            ys: list[np.ndarray] = []
+            for lon, lat in parts:
+                xs.append(lon)
+                ys.append(lat)
+                xs.append(np.array([np.nan]))
+                ys.append(np.array([np.nan]))
+            strokes.append((np.concatenate(xs), np.concatenate(ys), dict(sig)))
+    finally:
+        if name:
+            apply_domain("wide")
+    _STROKE_CACHE[key] = strokes
+    return strokes
+
+
+def warm_boundaries(name: str) -> None:
+    """Build this region's coast and state lines once, before the cook workers start."""
+    _boundary_strokes(name)
+
+
+def add_boundaries(ax, name: str | None = None) -> None:
     # Domain 120–300 never crosses 0°, so plain lon/lat + NE lines.
     # scalex/scaley False: world coastlines must not zoom the map out.
     # Upgrade: cartopy 10m features if a 3.14 wheel appears.
-    for lon, lat, kw in _ne_lines():
+    for lon, lat, kw in _boundary_strokes(name):
         ax.plot(lon, lat, scalex=False, scaley=False, **kw)
 
 

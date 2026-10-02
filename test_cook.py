@@ -287,6 +287,35 @@ def main() -> None:
     assert "valid Thu 24 Sep 14Z / 7am PDT" in title
     assert "init 8am PDT (15Z)" in title
     assert title.endswith("F+001")
+    from PIL import Image as PilImage
+    from stage_pages import stage
+    with tempfile.TemporaryDirectory(dir="/tmp") as src, tempfile.TemporaryDirectory(dir="/tmp") as dst:
+        site = Path(src)
+        out = Path(dst)
+        frame = site / "frames" / "slp"
+        frame.mkdir(parents=True)
+        rng = np.random.default_rng(0)
+        for name in ("f001.png", "f002.png"):
+            PilImage.fromarray(rng.integers(0, 255, (80, 200, 3), dtype=np.uint8)).save(
+                frame / name
+            )
+        (site / "index.html").write_text("<html></html>")
+        manifest = {
+            "variables": [{"id": "slp"}],
+            "frames": [
+                {"files": {"slp": "frames/slp/f001.png"}},
+                {"files": {"slp": "frames/slp/f002.png"}},
+            ],
+        }
+        (site / "manifest.json").write_text(json.dumps(manifest))
+        assert stage(site, out) == 2
+        assert (out / "frames/slp/f001.jpg").is_file()
+        first = (out / "frames/slp/f001.jpg").stat().st_mtime
+        # Orphan from an older publish, plus a fresh JPEG, must not be redone.
+        (out / "frames/slp/f099.jpg").write_bytes(b"x" * 20)
+        assert stage(site, out) == 0
+        assert (out / "frames/slp/f001.jpg").stat().st_mtime == first
+        assert not (out / "frames/slp/f099.jpg").exists()
     print("ok", len(leads), "leads", len(PALETTES), "palettes", len(FIELD_ROWS), "fields")
 
 

@@ -12,6 +12,17 @@ from pathlib import Path
 from PIL import Image
 
 
+def _jpg_fresh(png: Path, jpg: Path) -> bool:
+    try:
+        return (
+            jpg.is_file()
+            and jpg.stat().st_size > 1000
+            and jpg.stat().st_mtime >= png.stat().st_mtime
+        )
+    except OSError:
+        return False
+
+
 def stage(site: Path, dest: Path, *, root: bool = True) -> int:
     dest.mkdir(parents=True, exist_ok=True)
     shutil.copy2(site / "index.html", dest / "index.html")
@@ -35,21 +46,37 @@ def stage(site: Path, dest: Path, *, root: bool = True) -> int:
         }
     (dest / "manifest.json").write_text(json.dumps(m, indent=2) + "\n", encoding="utf-8")
 
+    wanted: set[str] = set()
+    for fr in m.get("frames", []):
+        for rel in (fr.get("files") or {}).values():
+            if isinstance(rel, str):
+                wanted.add(rel)
+
     jobs = []
-    folders = [site / "frames" / fid for fid in keep] if keep else list((site / "frames").glob("*"))
-    for folder in folders:
-        for png in folder.glob("f[0-9][0-9][0-9].png"):
-            jpg = dest / png.relative_to(site).with_suffix(".jpg")
-            jpg.parent.mkdir(parents=True, exist_ok=True)
-            jobs.append((png, jpg))
+    for rel in wanted:
+        if not rel.endswith(".jpg"):
+            continue
+        png = site / (rel[:-4] + ".png")
+        jpg = dest / rel
+        if not png.is_file() or _jpg_fresh(png, jpg):
+            continue
+        jpg.parent.mkdir(parents=True, exist_ok=True)
+        jobs.append((png, jpg))
+
+    frames_dir = dest / "frames"
+    if frames_dir.is_dir():
+        for old in frames_dir.rglob("*.jpg"):
+            if old.relative_to(dest).as_posix() not in wanted:
+                old.unlink()
 
     def convert(pair: tuple[Path, Path]) -> None:
         src, jpg = pair
         with Image.open(src) as im:
             im.convert("RGB").save(jpg, "JPEG", quality=85, optimize=True)
 
-    with ThreadPoolExecutor(max_workers=8) as pool:
-        list(pool.map(convert, jobs))
+    if jobs:
+        with ThreadPoolExecutor(max_workers=8) as pool:
+            list(pool.map(convert, jobs))
     return len(jobs)
 
 
@@ -78,10 +105,7 @@ def main() -> int:
     for name in ("pnw", "ca"):
         man = site / name / "manifest.json"
         if man.is_file() and man.stat().st_size > 0:
-            crop_dest = dest / name
-            if crop_dest.exists():
-                shutil.rmtree(crop_dest)
-            n += stage(site / name, crop_dest, root=False)
+            n += stage(site / name, dest / name, root=False)
     print(f"converted {n} maps", flush=True)
     return 0
 

@@ -17,7 +17,6 @@ import argparse
 import json
 import os
 import sys
-import threading
 import time
 import urllib.error
 import urllib.request
@@ -212,10 +211,6 @@ def classify(img: ee.Image, bounds: np.ndarray) -> ee.Image:
     return out.where(img.gte(float(bounds[-1])), last)
 
 
-# apply_domain mutates shared bounds. EE workers wrap thumbs at the same time.
-_bounds_lock = threading.Lock()
-
-
 def thumb_params(reg: dict) -> dict:
     lat0, lat1 = reg["lat"]
     lon0, lon1 = reg["lon"]
@@ -329,13 +324,8 @@ def wrap_thumb(
     ax.set_autoscale_on(False)
     ax.set_xlim(lon0, lon1)
     ax.set_ylim(lat0, lat1)
-    # LSIB country paint put a false 40°N stroke on the fine California grid.
-    with _bounds_lock:
-        cook.apply_domain(reg["name"])
-        try:
-            cook.add_boundaries(ax)
-        finally:
-            cook.apply_domain("wide")
+    # Lines were warmed for this region. Same vectors every frame, no shared bounds.
+    cook.add_boundaries(ax, reg["name"])
     if contours is not None:
         lon, lat, z = contours
         cs = ax.contour(
@@ -581,6 +571,8 @@ def main() -> None:
 
     # ponytail: one slider; F+1–48 and F+54–360 may be different inits.
     # Ceiling: EE QPS; drop workers if 429s. Crops are extra thumbs of the same images.
+    for _out, reg in regions:
+        cook.warm_boundaries(reg["name"])
     t0 = time.time()
     done_by: dict[Path, dict[int, dict]] = {out: {} for out, _reg in regions}
     source = f"earthengine:{COL_01} hourly={hourly} synoptic={synoptic}"
