@@ -238,7 +238,7 @@
     }
     const CLOUD_LAYERS = new Set(["cloud_low", "cloud_mid", "cloud_high"]);
     const CORE_IDS = ["station_t", "qpf1_imerg", "qpf_acc", "slp", "wind10", "wind10_p90"];
-    const UPPER_IDS = new Set(["h500", "t850", "wind925", "wind700", "wind500", "wind300"]);
+    const UPPER_IDS = new Set(["h500", "t850", "wind925", "wind700", "wind500", "wind300", "rh925", "rh850", "rh700", "rh500"]);
     const HOURLY_LEADS = Array.from({ length: 48 }, (_, n) => n + 1);
     const SYN_LEADS = Array.from({ length: 52 }, (_, n) => 54 + n * 6);
     const ENS_LEADS = Array.from({ length: 60 }, (_, n) => 6 + n * 6);
@@ -290,6 +290,22 @@
       wind300: {
         title: "300 mb wind (jet stream)",
         sub: "About 30,000 feet · mb = millibars · knots",
+      },
+      rh925: {
+        title: "925 mb relative humidity",
+        sub: "Calculated from specific humidity and temperature · about 2,500 feet · %",
+      },
+      rh850: {
+        title: "850 mb relative humidity",
+        sub: "Calculated from specific humidity and temperature · about 5,000 feet · %",
+      },
+      rh700: {
+        title: "700 mb relative humidity",
+        sub: "Calculated from specific humidity and temperature · about 10,000 feet · %",
+      },
+      rh500: {
+        title: "500 mb relative humidity",
+        sub: "Calculated from specific humidity and temperature · about 18,000 feet · %",
       },
     };
 
