@@ -97,7 +97,7 @@
       "units": "%"
     }
   ],
-  "generated": "2026-10-03T13:57:56Z",
+  "generated": "2026-10-03T15:18:36Z",
   "frames": [
     {
       "lead": 1,
@@ -2002,6 +2002,6 @@
   ],
   "hourly_init": "2026-10-03T07:00:00Z",
   "synoptic_init": "2026-10-03T06:00:00Z",
-  "ensemble_init": "2026-10-03T00:00:00Z",
-  "ensemble_note": "Upper air is the 64-member mean from the ensemble Zarr, 6-hourly synoptic inits only (not the free stats mean)."
+  "ensemble_note": "Upper air is the 64-member mean from the ensemble Zarr, 6-hourly synoptic inits only (not the free stats mean).",
+  "ensemble_init": "2026-10-03T06:00:00Z"
 }

@@ -12,7 +12,7 @@
     ]
   },
   "source": "earthengine:projects/gcp-public-data-weathernext/assets/weathernext_3_0_0_0p1deg hourly=2026-10-03T07:00:00Z synoptic=2026-10-03T06:00:00Z",
-  "note": "F+1\u201348 from latest hourly init (interim or synoptic). F+54\u2013360 from latest 15-day synoptic. Maps only \u2014 no downloadable grids. Pacific Northwest: 40\u201355\u00b0N, 145\u2013110\u00b0W.",
+  "note": "Maps only \u2014 no downloadable grids. Pacific Northwest: 40\u201355\u00b0N, 145\u2013110\u00b0W.",
   "disclaimer": "WeatherNext 3 experimental research data. Not an official forecast, watch, or warning, and not NWS. Do not use for life-and-property decisions.",
   "keys": "\u2190 \u2192 step time \u00b7 space play \u00b7 Home/End ends",
   "variables": [
@@ -97,7 +97,7 @@
       "units": "%"
     }
   ],
-  "generated": "2026-10-03T14:12:11Z",
+  "generated": "2026-10-03T15:18:35Z",
   "frames": [
     {
       "lead": 1,
@@ -2002,6 +2002,6 @@
   ],
   "hourly_init": "2026-10-03T07:00:00Z",
   "synoptic_init": "2026-10-03T06:00:00Z",
-  "ensemble_init": "2026-10-03T00:00:00Z",
-  "ensemble_note": "Upper air is the 64-member mean from the ensemble Zarr, 6-hourly synoptic inits only (not the free stats mean)."
+  "ensemble_note": "Upper air is the 64-member mean from the ensemble Zarr, 6-hourly synoptic inits only (not the free stats mean).",
+  "ensemble_init": "2026-10-03T06:00:00Z"
 }
