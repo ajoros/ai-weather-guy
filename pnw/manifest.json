@@ -97,7 +97,7 @@
       "units": "%"
     }
   ],
-  "generated": "2026-10-10T18:45:54Z",
+  "generated": "2026-10-10T19:37:21Z",
   "frames": [
     {
       "lead": 1,
@@ -492,7 +492,7 @@
     },
     {
       "lead": 28,
-      "valid": "2026-10-11T07:00:00Z",
+      "valid": "2026-10-11T15:00:00Z",
       "files": {
         "qpf1_imerg": "frames/qpf1_imerg/f028.jpg",
         "station_t": "frames/station_t/f028.jpg",
@@ -501,7 +501,7 @@
         "wind10_p90": "frames/wind10_p90/f028.jpg",
         "qpf_acc": "frames/qpf_acc/f028.jpg"
       },
-      "init": "2026-10-10T03:00:00Z"
+      "init": "2026-10-10T11:00:00Z"
     },
     {
       "lead": 29,
