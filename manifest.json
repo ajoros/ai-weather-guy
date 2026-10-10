@@ -1,6 +1,6 @@
 {
-  "run": "20261010_03hr_01_preds",
-  "init": "2026-10-10T03:00:00Z",
+  "run": "20261010_04hr_01_preds",
+  "init": "2026-10-10T04:00:00Z",
   "domain": {
     "lat": [
       10.0,
@@ -11,7 +11,7 @@
       300.0
     ]
   },
-  "source": "earthengine:projects/gcp-public-data-weathernext/assets/weathernext_3_0_0_0p1deg hourly=2026-10-10T03:00:00Z synoptic=2026-10-10T00:00:00Z",
+  "source": "earthengine:projects/gcp-public-data-weathernext/assets/weathernext_3_0_0_0p1deg hourly=2026-10-10T04:00:00Z synoptic=2026-10-10T00:00:00Z",
   "note": "F+1\u201348 from latest hourly init (interim or synoptic). F+54\u2013360 from latest 15-day synoptic. Maps only \u2014 no downloadable grids.",
   "disclaimer": "WeatherNext 3 experimental research data. Not an official forecast, watch, or warning, and not NWS. Do not use for life-and-property decisions.",
   "keys": "\u2190 \u2192 step time \u00b7 space play \u00b7 Home/End ends",
@@ -97,11 +97,11 @@
       "units": "%"
     }
   ],
-  "generated": "2026-10-10T10:38:37Z",
+  "generated": "2026-10-10T11:42:14Z",
   "frames": [
     {
       "lead": 1,
-      "valid": "2026-10-10T04:00:00Z",
+      "valid": "2026-10-10T05:00:00Z",
       "files": {
         "station_t": "frames/station_t/f001.jpg",
         "wind10": "frames/wind10/f001.jpg",
@@ -110,11 +110,11 @@
         "qpf_acc": "frames/qpf_acc/f001.jpg",
         "wind10_p90": "frames/wind10_p90/f001.jpg"
       },
-      "init": "2026-10-10T03:00:00Z"
+      "init": "2026-10-10T04:00:00Z"
     },
     {
       "lead": 2,
-      "valid": "2026-10-10T05:00:00Z",
+      "valid": "2026-10-10T06:00:00Z",
       "files": {
         "station_t": "frames/station_t/f002.jpg",
         "wind10": "frames/wind10/f002.jpg",
@@ -123,11 +123,11 @@
         "qpf_acc": "frames/qpf_acc/f002.jpg",
         "wind10_p90": "frames/wind10_p90/f002.jpg"
       },
-      "init": "2026-10-10T03:00:00Z"
+      "init": "2026-10-10T04:00:00Z"
     },
     {
       "lead": 3,
-      "valid": "2026-10-10T06:00:00Z",
+      "valid": "2026-10-10T07:00:00Z",
       "files": {
         "station_t": "frames/station_t/f003.jpg",
         "slp": "frames/slp/f003.jpg",
@@ -136,11 +136,11 @@
         "qpf_acc": "frames/qpf_acc/f003.jpg",
         "wind10_p90": "frames/wind10_p90/f003.jpg"
       },
-      "init": "2026-10-10T03:00:00Z"
+      "init": "2026-10-10T04:00:00Z"
     },
     {
       "lead": 4,
-      "valid": "2026-10-10T07:00:00Z",
+      "valid": "2026-10-10T08:00:00Z",
       "files": {
         "station_t": "frames/station_t/f004.jpg",
         "wind10": "frames/wind10/f004.jpg",
@@ -149,11 +149,11 @@
         "qpf_acc": "frames/qpf_acc/f004.jpg",
         "wind10_p90": "frames/wind10_p90/f004.jpg"
       },
-      "init": "2026-10-10T03:00:00Z"
+      "init": "2026-10-10T04:00:00Z"
     },
     {
       "lead": 5,
-      "valid": "2026-10-10T08:00:00Z",
+      "valid": "2026-10-10T09:00:00Z",
       "files": {
         "station_t": "frames/station_t/f005.jpg",
         "slp": "frames/slp/f005.jpg",
@@ -162,11 +162,11 @@
         "qpf_acc": "frames/qpf_acc/f005.jpg",
         "wind10_p90": "frames/wind10_p90/f005.jpg"
       },
-      "init": "2026-10-10T03:00:00Z"
+      "init": "2026-10-10T04:00:00Z"
     },
     {
       "lead": 6,
-      "valid": "2026-10-10T09:00:00Z",
+      "valid": "2026-10-10T10:00:00Z",
       "files": {
         "station_t": "frames/station_t/f006.jpg",
         "slp": "frames/slp/f006.jpg",
@@ -185,11 +185,11 @@
         "rh700": "frames/rh700/f006.jpg",
         "rh500": "frames/rh500/f006.jpg"
       },
-      "init": "2026-10-10T03:00:00Z"
+      "init": "2026-10-10T04:00:00Z"
     },
     {
       "lead": 7,
-      "valid": "2026-10-10T10:00:00Z",
+      "valid": "2026-10-10T11:00:00Z",
       "files": {
         "station_t": "frames/station_t/f007.jpg",
         "slp": "frames/slp/f007.jpg",
@@ -198,11 +198,11 @@
         "qpf_acc": "frames/qpf_acc/f007.jpg",
         "wind10_p90": "frames/wind10_p90/f007.jpg"
       },
-      "init": "2026-10-10T03:00:00Z"
+      "init": "2026-10-10T04:00:00Z"
     },
     {
       "lead": 8,
-      "valid": "2026-10-10T11:00:00Z",
+      "valid": "2026-10-10T12:00:00Z",
       "files": {
         "station_t": "frames/station_t/f008.jpg",
         "slp": "frames/slp/f008.jpg",
@@ -211,11 +211,11 @@
         "qpf_acc": "frames/qpf_acc/f008.jpg",
         "wind10_p90": "frames/wind10_p90/f008.jpg"
       },
-      "init": "2026-10-10T03:00:00Z"
+      "init": "2026-10-10T04:00:00Z"
     },
     {
       "lead": 9,
-      "valid": "2026-10-10T12:00:00Z",
+      "valid": "2026-10-10T13:00:00Z",
       "files": {
         "station_t": "frames/station_t/f009.jpg",
         "wind10": "frames/wind10/f009.jpg",
@@ -224,11 +224,11 @@
         "qpf_acc": "frames/qpf_acc/f009.jpg",
         "wind10_p90": "frames/wind10_p90/f009.jpg"
       },
-      "init": "2026-10-10T03:00:00Z"
+      "init": "2026-10-10T04:00:00Z"
     },
     {
       "lead": 10,
-      "valid": "2026-10-10T13:00:00Z",
+      "valid": "2026-10-10T14:00:00Z",
       "files": {
         "station_t": "frames/station_t/f010.jpg",
         "wind10": "frames/wind10/f010.jpg",
@@ -237,11 +237,11 @@
         "qpf_acc": "frames/qpf_acc/f010.jpg",
         "wind10_p90": "frames/wind10_p90/f010.jpg"
       },
-      "init": "2026-10-10T03:00:00Z"
+      "init": "2026-10-10T04:00:00Z"
     },
     {
       "lead": 11,
-      "valid": "2026-10-10T14:00:00Z",
+      "valid": "2026-10-10T15:00:00Z",
       "files": {
         "station_t": "frames/station_t/f011.jpg",
         "wind10": "frames/wind10/f011.jpg",
@@ -250,11 +250,11 @@
         "qpf_acc": "frames/qpf_acc/f011.jpg",
         "wind10_p90": "frames/wind10_p90/f011.jpg"
       },
-      "init": "2026-10-10T03:00:00Z"
+      "init": "2026-10-10T04:00:00Z"
     },
     {
       "lead": 12,
-      "valid": "2026-10-10T15:00:00Z",
+      "valid": "2026-10-10T16:00:00Z",
       "files": {
         "station_t": "frames/station_t/f012.jpg",
         "wind10": "frames/wind10/f012.jpg",
@@ -273,11 +273,11 @@
         "rh700": "frames/rh700/f012.jpg",
         "rh500": "frames/rh500/f012.jpg"
       },
-      "init": "2026-10-10T03:00:00Z"
+      "init": "2026-10-10T04:00:00Z"
     },
     {
       "lead": 13,
-      "valid": "2026-10-10T16:00:00Z",
+      "valid": "2026-10-10T17:00:00Z",
       "files": {
         "station_t": "frames/station_t/f013.jpg",
         "slp": "frames/slp/f013.jpg",
@@ -286,11 +286,11 @@
         "qpf_acc": "frames/qpf_acc/f013.jpg",
         "wind10_p90": "frames/wind10_p90/f013.jpg"
       },
-      "init": "2026-10-10T03:00:00Z"
+      "init": "2026-10-10T04:00:00Z"
     },
     {
       "lead": 14,
-      "valid": "2026-10-10T17:00:00Z",
+      "valid": "2026-10-10T18:00:00Z",
       "files": {
         "station_t": "frames/station_t/f014.jpg",
         "slp": "frames/slp/f014.jpg",
@@ -299,11 +299,11 @@
         "qpf_acc": "frames/qpf_acc/f014.jpg",
         "wind10_p90": "frames/wind10_p90/f014.jpg"
       },
-      "init": "2026-10-10T03:00:00Z"
+      "init": "2026-10-10T04:00:00Z"
     },
     {
       "lead": 15,
-      "valid": "2026-10-10T18:00:00Z",
+      "valid": "2026-10-10T19:00:00Z",
       "files": {
         "station_t": "frames/station_t/f015.jpg",
         "slp": "frames/slp/f015.jpg",
@@ -312,11 +312,11 @@
         "qpf_acc": "frames/qpf_acc/f015.jpg",
         "wind10_p90": "frames/wind10_p90/f015.jpg"
       },
-      "init": "2026-10-10T03:00:00Z"
+      "init": "2026-10-10T04:00:00Z"
     },
     {
       "lead": 16,
-      "valid": "2026-10-10T19:00:00Z",
+      "valid": "2026-10-10T20:00:00Z",
       "files": {
         "station_t": "frames/station_t/f016.jpg",
         "slp": "frames/slp/f016.jpg",
@@ -325,11 +325,11 @@
         "qpf_acc": "frames/qpf_acc/f016.jpg",
         "wind10_p90": "frames/wind10_p90/f016.jpg"
       },
-      "init": "2026-10-10T03:00:00Z"
+      "init": "2026-10-10T04:00:00Z"
     },
     {
       "lead": 17,
-      "valid": "2026-10-10T20:00:00Z",
+      "valid": "2026-10-10T21:00:00Z",
       "files": {
         "station_t": "frames/station_t/f017.jpg",
         "slp": "frames/slp/f017.jpg",
@@ -338,11 +338,11 @@
         "qpf_acc": "frames/qpf_acc/f017.jpg",
         "wind10_p90": "frames/wind10_p90/f017.jpg"
       },
-      "init": "2026-10-10T03:00:00Z"
+      "init": "2026-10-10T04:00:00Z"
     },
     {
       "lead": 18,
-      "valid": "2026-10-10T21:00:00Z",
+      "valid": "2026-10-10T22:00:00Z",
       "files": {
         "station_t": "frames/station_t/f018.jpg",
         "wind10": "frames/wind10/f018.jpg",
@@ -361,7 +361,7 @@
         "rh700": "frames/rh700/f018.jpg",
         "rh500": "frames/rh500/f018.jpg"
       },
-      "init": "2026-10-10T03:00:00Z"
+      "init": "2026-10-10T04:00:00Z"
     },
     {
       "lead": 19,
@@ -2000,7 +2000,7 @@
       "init": "2026-10-09T18:00:00Z"
     }
   ],
-  "hourly_init": "2026-10-10T03:00:00Z",
+  "hourly_init": "2026-10-10T04:00:00Z",
   "synoptic_init": "2026-10-10T00:00:00Z",
   "ensemble_init": "2026-10-10T00:00:00Z",
   "ensemble_note": "Upper air is the 64-member mean from the ensemble Zarr, 6-hourly synoptic inits only (not the free stats mean)."
