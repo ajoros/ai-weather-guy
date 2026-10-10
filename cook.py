@@ -362,6 +362,17 @@ PALETTES: dict[str, dict] = {
         ),
         "label": "inches",
     },
+    # 1-hour rain. Same NWS colors as pcp_in; yellow starts near 1 inch.
+    "pcp_1h": {
+        "colors": NWS_PCP,
+        "bounds": np.array(
+            [0, 0.01, 0.05, 0.10, 0.25, 0.50, 0.75, 1, 1.25, 1.5, 2, 2.5, 3, 4, 5, 6, 8],
+            dtype=float,
+        ),
+        "label": "inches",
+        "ticks": np.array([0.01, 0.10, 0.25, 0.50, 1, 2, 4, 8], dtype=float),
+        "extend": "max",
+    },
     "wind_mph": {
         "colors": NWS_WIND,
         "bounds": np.array(
@@ -540,11 +551,11 @@ FIELD_ROWS = [
     ("td", "Gridded 2 m dewpoint", "dewpoint_temperature_2m_mean", k_to_f, "dpt_f", "0p1", 0),
     ("qpf6_imerg", "6-h IMERG QPF", "imerg_tp_1hr_mean", m_to_in, "pcp_in", "0p1", 6),
     ("qpf6_imerg_p90", "6-h IMERG QPF p90", "imerg_tp_1hr_p90", m_to_in, "pcp_in", "0p1", 6),
-    ("qpf1_imerg", "1-h IMERG QPF", "imerg_tp_1hr_mean", m_to_in, "pcp_in", "0p1", 1),
-    ("qpf1_model", "1-h model QPF", "total_precipitation_1hr_mean", m_to_in, "pcp_in", "0p1", 1),
+    ("qpf1_imerg", "1-h IMERG QPF", "imerg_tp_1hr_mean", m_to_in, "pcp_1h", "0p1", 1),
+    ("qpf1_model", "1-h model QPF", "total_precipitation_1hr_mean", m_to_in, "pcp_1h", "0p1", 1),
     ("qpf6_model", "6-h model QPF", "total_precipitation_1hr_mean", m_to_in, "pcp_in", "0p1", 6),
     ("qpf_acc", "Model QPF run total", "total_precipitation_1hr_mean", m_to_in, "pcp_in", "0p1", -1),
-    ("qpf1_exp", "1-h experimental QPF", "experimental_tp_1hr_mean", m_to_in, "pcp_in", "0p1", 1),
+    ("qpf1_exp", "1-h experimental QPF", "experimental_tp_1hr_mean", m_to_in, "pcp_1h", "0p1", 1),
     ("slp", "Mean sea-level pressure", "mean_sea_level_pressure_mean", pa_to_hpa, "slp", "0p1", 0),
     ("wind10", "10 m wind speed", "wind_speed_10m_mean", ms_to_mph, "wind_mph", "0p1", 0),
     ("wind10_p90", "10 m wind p90 (gust proxy)", "wind_speed_10m_p90", ms_to_mph, "wind_mph", "0p1", 0),
@@ -791,7 +802,7 @@ def finish_map(fig, ax, mappable, pal, path: Path) -> None:
         aspect=24,
         label=pal["label"],
         ticks=ticks,
-        extend="both",
+        extend=pal.get("extend", "both"),
     )
     fig.tight_layout(pad=0.25)
     tmp = staged_path(path.name)

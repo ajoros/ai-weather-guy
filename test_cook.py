@@ -144,6 +144,14 @@ def main() -> None:
     assert acc[2] == "total_precipitation_1hr_mean"
     assert acc[4] == "pcp_in"
     assert acc[6] == -1
+    assert FIELDS["qpf1_imerg"][4] == "pcp_1h"
+    assert FIELDS["qpf1_model"][4] == "pcp_1h"
+    assert FIELDS["qpf1_exp"][4] == "pcp_1h"
+    assert list(PALETTES["pcp_1h"]["bounds"]) == [
+        0, 0.01, 0.05, 0.10, 0.25, 0.50, 0.75, 1, 1.25, 1.5, 2, 2.5, 3, 4, 5, 6, 8,
+    ]
+    assert PALETTES["pcp_1h"]["extend"] == "max"
+    assert PALETTES["pcp_in"]["bounds"][-1] == 50
     assert accum_hours(48, -1) == list(range(1, 49))
     assert accum_hours(48, 6) == list(range(43, 49))
     assert parse_fields("all") == [row[0] for row in FIELD_ROWS]
