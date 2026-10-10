@@ -59,6 +59,9 @@ def main() -> None:
     assert "WeatherNext 3" in WATERMARK
     assert FIELDS["h500"][4] == "wind_kt_pw" and FIELDS["t850"][4] == "tmp_c"
     assert FIELDS["wind300"][4] == FIELDS["wind925"][4] == FIELDS["wind700"][4] == FIELDS["wind500"][4] == "wind_kt"
+    assert cook.RH_LEVEL == {"rh925": 925, "rh850": 850, "rh700": 700, "rh500": 500}
+    assert [i for i in ENSEMBLE_IDS if i.startswith("rh")] == list(cook.RH_LEVEL)
+    assert all(FIELDS[i][4] == "rh_pct" for i in cook.RH_LEVEL)
     assert ensemble_floor_lead(1) == 6
     assert ensemble_floor_lead(5) == 6
     assert ensemble_floor_lead(6) == 6
@@ -67,6 +70,9 @@ def main() -> None:
     assert ensemble_floor_lead(12) == 12
     assert ensemble_floor_lead(360) == 360
     import numpy as np
+    # 8 g/kg at 10°C and 850 hPa is 89% (Bolton, over water).
+    rh = float(np.asarray(cook.specific_humidity_to_rh(np.array([0.008]), np.array([283.15]), 850)).item())
+    assert abs(rh - 88.7) < 0.2, rh
     lat = np.linspace(30.0, 40.0, 21)
     lon = np.linspace(240.0, 250.0, 21)
     u = np.ones((21, 21))

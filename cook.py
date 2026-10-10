@@ -228,6 +228,18 @@ def phi_to_dam(a: np.ndarray) -> np.ndarray:
     return a / 9.80665 / 10.0
 
 
+def specific_humidity_to_rh(q, t_k, p_hpa: float) -> np.ndarray:
+    """Relative humidity (%) from specific humidity (kg/kg), temperature (K), and pressure (hPa).
+
+    Bolton 1980 saturation vapor pressure over liquid water.
+    """
+    q = np.asarray(q, dtype=float)
+    t_c = np.asarray(t_k, dtype=float) - 273.15
+    e = q * p_hpa / (0.622 + 0.378 * q)
+    e_s = 6.112 * np.exp(17.67 * t_c / (t_c + 243.5))
+    return 100.0 * e / e_s
+
+
 # NWS 2018 standard curves via Herbie paint hex lists. Bounds kept in
 # the units we plot (°F, inches, mph) — not Herbie's C/mm/m/s conversion.
 NWS_TMP = [
@@ -531,6 +543,25 @@ PALETTES: dict[str, dict] = {
         "ticks": np.arange(20, 135, 10),
         "bad": "#ffffff",
     },
+    # Dry tan → saturated blue. Values above 100% use the top color.
+    "rh_pct": {
+        "colors": [
+            "#8c5a2b",
+            "#c4a574",
+            "#e6d3a3",
+            "#f4efe4",
+            "#d9f0c8",
+            "#8dce78",
+            "#3aaa6a",
+            "#3aa0c8",
+            "#1f6fbf",
+            "#0b3d91",
+        ],
+        "bounds": np.arange(0.0, 101.0, 10.0),
+        "label": "%",
+        "ticks": np.arange(0, 101, 20),
+        "bad": "#ffffff",
+    },
 }
 
 
@@ -565,6 +596,10 @@ FIELD_ROWS = [
     ("wind700", "700 mb wind", "u_component_of_wind", ms_to_kt, "wind_kt", "0p25", 0),
     ("wind500", "500 mb wind", "u_component_of_wind", ms_to_kt, "wind_kt", "0p25", 0),
     ("wind300", "300 mb wind", "u_component_of_wind", ms_to_kt, "wind_kt", "0p25", 0),
+    ("rh925", "925 mb relative humidity", "specific_humidity", specific_humidity_to_rh, "rh_pct", "0p25", 0),
+    ("rh850", "850 mb relative humidity", "specific_humidity", specific_humidity_to_rh, "rh_pct", "0p25", 0),
+    ("rh700", "700 mb relative humidity", "specific_humidity", specific_humidity_to_rh, "rh_pct", "0p25", 0),
+    ("rh500", "500 mb relative humidity", "specific_humidity", specific_humidity_to_rh, "rh_pct", "0p25", 0),
     ("sst", "Sea-surface temperature", "sea_surface_temperature_mean", k_to_f, "tmp_f", "0p1", 0),
     ("cloud_total", "Total cloud cover", "total_cloud_cover_mean", frac_to_pct, "cloud", "0p1", 0),
     ("cloud_low", "Low cloud cover", "low_cloud_cover_mean", frac_to_pct, "cloud", "0p1", 0),
@@ -573,9 +608,21 @@ FIELD_ROWS = [
 ]
 FIELDS = {row[0]: row for row in FIELD_ROWS}
 CORE_IDS = ["station_t", "qpf1_imerg", "qpf_acc", "slp", "wind10", "wind10_p90"]
-ENSEMBLE_IDS = ["h500", "t850", "wind925", "wind700", "wind500", "wind300"]
+ENSEMBLE_IDS = [
+    "h500",
+    "t850",
+    "wind925",
+    "wind700",
+    "wind500",
+    "wind300",
+    "rh925",
+    "rh850",
+    "rh700",
+    "rh500",
+]
 PAGE_IDS = CORE_IDS + ENSEMBLE_IDS
 WIND_LEVEL = {"wind925": 925, "wind700": 700, "wind500": 500, "wind300": 300}
+RH_LEVEL = {"rh925": 925, "rh850": 850, "rh700": 700, "rh500": 500}
 PT = ZoneInfo("America/Los_Angeles")
 
 

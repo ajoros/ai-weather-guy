@@ -34,7 +34,9 @@ from cook import (
     LON0,
     LON1,
     SITE,
+    RH_LEVEL,
     WIND_LEVEL,
+    specific_humidity_to_rh,
     display_leads,
     dropbox_retry,
     hours_since,
@@ -300,6 +302,13 @@ def _load_field(ds: xr.Dataset, start: str, hour: int, fid: str, members: int, b
         contour_label_color = "0.15"
         barbs = (lon, lat, uu * KT, vv * KT)
         note += " + isotherms + barbs"
+    elif fid in RH_LEVEL:
+        lev = RH_LEVEL[fid]
+        q = mean_level(ds, "specific_humidity", hour, lev, members, box)
+        t = mean_level(ds, "temperature", hour, lev, members, box)
+        lon, lat = np.asarray(q.lon_0p25), np.asarray(q.lat_0p25)
+        z = specific_humidity_to_rh(np.asarray(q), np.asarray(t), lev)
+        note += " calculated"
     else:
         lon, lat, uu, vv = load_uv(ds, hour, WIND_LEVEL[fid], members, box)
         z = ms_to_kt(np.hypot(uu, vv))
