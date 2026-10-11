@@ -12,13 +12,39 @@ from pathlib import Path
 from PIL import Image
 
 
-def _jpg_fresh(png: Path, jpg: Path) -> bool:
+def _init_text(png: Path) -> str | None:
     try:
-        return (
-            jpg.is_file()
-            and jpg.stat().st_size > 1000
-            and jpg.stat().st_mtime >= png.stat().st_mtime
-        )
+        text = png.with_suffix(".init").read_text(encoding="utf-8").strip()
+    except OSError:
+        return None
+    return text or None
+
+
+def _load_stamps(dest: Path) -> dict:
+    path = dest / ".frame-stamps.json"
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return {}
+    return data if isinstance(data, dict) else {}
+
+
+def _jpg_fresh(png: Path, jpg: Path, stamps: dict, rel: str) -> bool:
+    """Skip a JPEG only when it was built from this PNG's init stamp.
+
+    A gh-pages checkout sets every JPEG mtime to 'now', which is newer than
+    the PNG, so mtime cannot be the check. Frames with no stamp still use mtime.
+    """
+    try:
+        if not jpg.is_file() or jpg.stat().st_size <= 1000:
+            return False
+    except OSError:
+        return False
+    want = _init_text(png)
+    if want is not None:
+        return stamps.get(rel) == want
+    try:
+        return jpg.stat().st_mtime >= png.stat().st_mtime
     except OSError:
         return False
 
@@ -52,16 +78,17 @@ def stage(site: Path, dest: Path, *, root: bool = True) -> int:
             if isinstance(rel, str):
                 wanted.add(rel)
 
+    stamps = _load_stamps(dest)
     jobs = []
     for rel in wanted:
         if not rel.endswith(".jpg"):
             continue
         png = site / (rel[:-4] + ".png")
         jpg = dest / rel
-        if not png.is_file() or _jpg_fresh(png, jpg):
+        if not png.is_file() or _jpg_fresh(png, jpg, stamps, rel):
             continue
         jpg.parent.mkdir(parents=True, exist_ok=True)
-        jobs.append((png, jpg))
+        jobs.append((rel, png, jpg))
 
     frames_dir = dest / "frames"
     if frames_dir.is_dir():
@@ -69,14 +96,19 @@ def stage(site: Path, dest: Path, *, root: bool = True) -> int:
             if old.relative_to(dest).as_posix() not in wanted:
                 old.unlink()
 
-    def convert(pair: tuple[Path, Path]) -> None:
-        src, jpg = pair
+    def convert(job: tuple[str, Path, Path]) -> None:
+        _rel, src, jpg = job
         with Image.open(src) as im:
             im.convert("RGB").save(jpg, "JPEG", quality=85, optimize=True)
 
     if jobs:
         with ThreadPoolExecutor(max_workers=8) as pool:
             list(pool.map(convert, jobs))
+        for rel, png, _jpg in jobs:
+            want = _init_text(png)
+            if want:
+                stamps[rel] = want
+        (dest / ".frame-stamps.json").write_text(json.dumps(stamps, indent=2) + "\n", encoding="utf-8")
     return len(jobs)
 
 
@@ -110,5 +142,24 @@ def main() -> int:
     return 0
 
 
+def _self_check() -> None:
+    import tempfile
+
+    with tempfile.TemporaryDirectory() as d:
+        root = Path(d)
+        png = root / "f.png"
+        jpg = root / "f.jpg"
+        png.write_bytes(b"x")
+        png.with_suffix(".init").write_text("stats 1\n")
+        jpg.write_bytes(b"y" * 1001)
+        assert not _jpg_fresh(png, jpg, {}, "f.jpg")
+        assert _jpg_fresh(png, jpg, {"f.jpg": "stats 1"}, "f.jpg")
+        assert not _jpg_fresh(png, jpg, {"f.jpg": "stats 0"}, "f.jpg")
+    print("stage stamps ok")
+
+
 if __name__ == "__main__":
+    if len(sys.argv) == 2 and sys.argv[1] == "--check":
+        _self_check()
+        raise SystemExit(0)
     raise SystemExit(main())
