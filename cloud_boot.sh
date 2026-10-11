@@ -21,6 +21,10 @@ trap finish EXIT
 
 export HOME=/root
 export GOOGLE_CLOUD_PROJECT=weathernext3-joros
+# ponytail: WeatherNext grants the EE asset and the Zarr bucket to the Google account, not to a
+# service account, so the VM cooks with a copy of that account's ADC (what run_ensemble_vm.sh
+# scp'd up each run). Upgrade path: get the compute SA granted, then drop this line.
+export GOOGLE_APPLICATION_CREDENTIALS=/opt/wn3/cred/adc.json
 export PATH="/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"
 cd "$ROOT"
 
