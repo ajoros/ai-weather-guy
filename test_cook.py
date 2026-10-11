@@ -2,10 +2,13 @@
 """Self-check: lead list is 100 frames and NWS palettes line up."""
 
 import json
+import tempfile
 from datetime import datetime, timezone
+from pathlib import Path
 
 import cook
 from cook import (
+    frame_current,
     PALETTES,
     CORE_IDS,
     ENSEMBLE_IDS,
@@ -55,6 +58,14 @@ def main() -> None:
     from cook import save_map
     assert "contour_data" in inspect.signature(save_map).parameters
     assert FIELDS["h500"][6] == 0 and FIELDS["wind10_p90"][2] == "wind_speed_10m_p90"
+    with tempfile.TemporaryDirectory() as d:
+        png = Path(d) / "f024.png"
+        png.write_bytes(b"x" * 1001)
+        init = "2026-10-11T12:00:00Z"
+        assert not frame_current(png, init)
+        png.with_suffix(".init").write_text(f"stats {init}\n")
+        assert frame_current(png, init)
+        assert not frame_current(png, "2026-10-11T11:00:00Z")
     assert "AI-Weather-Guy" in WATERMARK and "ajoros.github.io" in WATERMARK
     assert "WeatherNext 3" in WATERMARK
     assert FIELDS["h500"][4] == "wind_kt_pw" and FIELDS["t850"][4] == "tmp_c"

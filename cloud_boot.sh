@@ -28,6 +28,10 @@ export GOOGLE_APPLICATION_CREDENTIALS=/opt/wn3/cred/adc.json
 export PATH="/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"
 cd "$ROOT"
 
+# The clone is owned by the user who created it; root is the startup-script user.
+if ! git config --global --get-all safe.directory 2>/dev/null | grep -qx "$ROOT"; then
+  git config --global --add safe.directory "$ROOT"
+fi
 git pull --ff-only origin main || echo "git pull failed; cooking with the tree already here"
 
 PY="$ROOT/.venv/bin/python"
@@ -42,7 +46,8 @@ fi
 SITE="$ROOT/site"
 mkdir -p "$ROOT/.cache"
 
-"$PY" cook_ee.py --workers 8 --fields core --pnw-out "$SITE/pnw" --ca-out "$SITE/ca" || echo "ee cook failed"
+# Surface maps from the free stats Zarr. Earth Engine is past its monthly quota.
+"$PY" cook.py --fields core --pnw-out "$SITE/pnw" --ca-out "$SITE/ca" || echo "surface cook failed"
 
 CHECK="$("$PY" cook_ensemble.py --check --out "$SITE" --pnw-out "$SITE/pnw" --ca-out "$SITE/ca" || true)"
 echo "$CHECK"

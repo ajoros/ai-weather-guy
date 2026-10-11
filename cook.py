@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Pre-render WeatherNext 3 stats maps for the local stacked viewer.
 
-Free stats Zarr only. Latest synoptic init (00/06/12/18Z), hourly F01–48
-then 6-hourly F54–360. NWS-style fixed bins. °F / inches / mph.
+Free stats Zarr only. Newest hourly file for F01–48, latest 00/06/12/18Z
+for F54–360. NWS-style fixed bins. °F / inches / mph. Wind barbs in knots.
 
     export GOOGLE_CLOUD_PROJECT=weathernext3-joros
     .venv/bin/python cook.py                  # all free fields, 100 frames
@@ -21,7 +21,7 @@ import sys
 import time
 import urllib.request
 from contextlib import contextmanager
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
@@ -696,6 +696,47 @@ def latest_synoptic(project_id: str) -> tuple[str, xr.Dataset]:
     raise SystemExit(f"Could not open a 360-h synoptic stats Zarr. Last error: {last}")
 
 
+def hourly_prefixes(lookback: int = 36) -> list[str]:
+    t = datetime.now(timezone.utc).replace(minute=0, second=0, microsecond=0)
+    out = []
+    for _ in range(lookback):
+        out.append(f"{PREFIX_ROOT}/{t:%Y%m%d}_{t:%H}hr_01_preds/predictions.zarr")
+        t -= timedelta(hours=1)
+    return out
+
+
+def latest_hourly_stats(project_id: str) -> tuple[str, xr.Dataset]:
+    """Newest stats file that has F+48 and is not a 15-day synoptic run."""
+    last: Exception | None = None
+    for prefix in hourly_prefixes():
+        try:
+            ds = open_stats(prefix, project_id)
+            _ = ds.init_time.values
+            hi = max(hours_since(v) for v in ds.lead_time.values)
+            if hi < 48 or hi >= 300:
+                ds.close()
+                continue
+            return prefix, ds
+        except ImportError:
+            raise
+        except Exception as exc:
+            last = exc
+            print(f"skip {prefix}: {exc}", file=sys.stderr, flush=True)
+    raise SystemExit(f"Could not open an hourly stats Zarr with F+48. Last error: {last}")
+
+
+WIND_U = "u_component_of_wind_10m_mean"
+WIND_V = "v_component_of_wind_10m_mean"
+
+
+def frame_current(path: Path, init_s: str) -> bool:
+    stamp = path.with_suffix(".init")
+    try:
+        return path.stat().st_size > 1000 and stamp.read_text().strip() == f"stats {init_s}"
+    except OSError:
+        return False
+
+
 def crop(da: xr.DataArray) -> xr.DataArray:
     if "lat_0p05" in da.dims:
         return da.sel(lat_0p05=slice(LAT0, LAT1), lon_0p05=slice(LON0, LON1))
@@ -935,6 +976,7 @@ def save_map(
     cmap.set_over(pal["colors"][-1])
     norm = mcolors.BoundaryNorm(pal["bounds"], cmap.N, clip=False)
     fig, ax = plt.subplots(figsize=FIG_SIZE, dpi=130)
+    ax.set_autoscale_on(False)
     ax.set_xlim(LON0, LON1)
     ax.set_ylim(LAT0, LAT1)
     pcm = ax.pcolormesh(lon, lat, data, cmap=cmap, norm=norm, shading="nearest", zorder=1)
@@ -1131,8 +1173,165 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--fields", default="all", help="all | core | comma ids")
     p.add_argument("--leads", default="", help="comma hours; default = F01–48 hourly, F54–360 /6h")
     p.add_argument("--out", type=Path, default=SITE)
+    p.add_argument("--pnw-out", type=Path, default=None)
+    p.add_argument("--ca-out", type=Path, default=None)
     p.add_argument("--force", action="store_true")
     return p.parse_args()
+
+
+def _emit(domain: str, dest: Path, lon, lat, z, *, title, palette, contours, barbs, init_s: str) -> None:
+    apply_domain(domain)
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    save_map(dest, lon, lat, z, title=title, palette=palette, contours=contours, barbs=barbs)
+    write_text_publish(dest.with_suffix(".init"), f"stats {init_s}\n")
+
+
+def _subset_field(lon, lat, z, barbs, reg: dict):
+    box = (reg["lat"][0], reg["lat"][1], reg["lon"][0], reg["lon"][1])
+    if barbs is None:
+        slon, slat, sz = subset_box(lon, lat, [z], box)
+        return slon, slat, sz, None
+    _blon, _blat, u, v = barbs
+    slon, slat, sz, su, sv = subset_box(lon, lat, [z, u, v], box)
+    return slon, slat, sz, (slon, slat, su, sv)
+
+
+def cook_one(
+    ds: xr.Dataset,
+    *,
+    prefix: str,
+    targets: list[int],
+    field_ids: list[str],
+    out: Path,
+    extras: list[tuple[str, Path]],
+    force: bool,
+    hourly_init: str,
+    synoptic_init: str,
+) -> int:
+    """Draw targets from this dataset. Returns how many frames were redrawn."""
+    if not targets:
+        return 0
+    lead_h = np.array([hours_since(v) for v in ds.lead_time.values])
+    index = {int(h): i for i, h in enumerate(lead_h)}
+    targets = [h for h in targets if h in index]
+    if not targets:
+        return 0
+
+    init_s = str(np.datetime64(ds.init_time.values, "s")) + "Z"
+    run = prefix.split("/")[-2]
+    specs = [FIELDS[i] for i in field_ids]
+    precip_vars = sorted({s[2] for s in specs if s[6]})
+    inst_01 = [s for s in specs if s[5] == "0p1" and s[6] == 0]
+    inst_05 = [s for s in specs if s[5] == "0p05"]
+    want_barbs = "wind10" in field_ids
+    precip_hours: set[int] = set()
+    for s in specs:
+        if not s[6]:
+            continue
+        for t in targets:
+            precip_hours.update(h for h in accum_hours(t, s[6]) if h in index)
+
+    apply_domain("wide")
+    frames_root = out / "frames"
+    frames_root.mkdir(parents=True, exist_ok=True)
+    for _name, root in extras:
+        (root / "frames").mkdir(parents=True, exist_ok=True)
+    source = f"gs://{BUCKET}/{prefix}"
+    print(f"run {run} init {init_s} frames {len(targets)}", flush=True)
+
+    precip_cache: dict[tuple[str, int], np.ndarray] = {}
+    lon01 = lat01 = lon05 = lat05 = None
+    redrawn = 0
+    done_hours: dict[int, dict] = {}
+    done_extra: dict[Path, dict[int, dict]] = {root: {} for _n, root in extras}
+
+    for hour in sorted(set(targets) | precip_hours):
+        i = index[hour]
+        if hour in precip_hours and precip_vars:
+            missing = [v for v in precip_vars if (v, hour) not in precip_cache]
+            if missing:
+                sl = load_retry(crop(ds[missing].isel(lead_time=i)))
+                lon01, lat01 = mesh(sl[missing[0]])
+                for v in missing:
+                    precip_cache[(v, hour)] = np.asarray(sl[v])
+        if hour not in targets:
+            continue
+
+        valid = str(np.datetime64(ds.datetime.values[i], "s")) + "Z"
+        tag = f"f{hour:03d}"
+        loaded01 = loaded05 = None
+        if inst_01 or want_barbs:
+            need = [s[2] for s in inst_01]
+            if want_barbs:
+                for name in (WIND_U, WIND_V):
+                    if name not in need:
+                        need.append(name)
+            loaded01 = load_retry(crop(ds[need].isel(lead_time=i)))
+            lon01, lat01 = mesh(loaded01[need[0]])
+        if inst_05:
+            need = [s[2] for s in inst_05]
+            loaded05 = load_retry(crop(ds[need].isel(lead_time=i)))
+            lon05, lat05 = mesh(loaded05[need[0]])
+
+        files: dict[str, str] = {}
+        extra_files: dict[Path, dict[str, str]] = {root: {} for _n, root in extras}
+        for fid, label, var, conv, pal, grid, accum in specs:
+            rel = f"frames/{fid}/{tag}.png"
+            path = out / rel
+            files[fid] = rel
+            if accum:
+                hours = [h for h in accum_hours(hour, accum) if (var, h) in precip_cache]
+                if not hours:
+                    continue
+                z = conv(np.sum([precip_cache[(var, h)] for h in hours], axis=0))
+                lon, lat = lon01, lat01
+            elif grid == "0p05":
+                z = conv(np.asarray(loaded05[var]))
+                lon, lat = lon05, lat05
+            else:
+                z = conv(np.asarray(loaded01[var]))
+                lon, lat = lon01, lat01
+            note = f"  ({hour}h window)" if accum == 6 and hour < 6 else ""
+            title = plot_title(label, note, valid, init_s, hour)
+            contours = np.arange(960, 1060, 4) if fid == "slp" else None
+            barbs = None
+            if fid == "wind10" and loaded01 is not None and WIND_U in loaded01:
+                barbs = (lon, lat, ms_to_kt(np.asarray(loaded01[WIND_U])), ms_to_kt(np.asarray(loaded01[WIND_V])))
+            jobs = [("wide", path, lon, lat, z, barbs)]
+            for name, root in extras:
+                slon, slat, sz, sb = _subset_field(lon, lat, z, barbs, DOMAINS[name])
+                jobs.append((name, root / rel, slon, slat, sz, sb))
+                extra_files[root][fid] = rel
+            for domain, dest, jlon, jlat, jz, jbarbs in jobs:
+                if not force and frame_current(dest, init_s):
+                    continue
+                _emit(domain, dest, jlon, jlat, jz, title=title, palette=pal, contours=contours, barbs=jbarbs, init_s=init_s)
+                redrawn += 1
+        apply_domain("wide")
+        done_hours[hour] = {"lead": hour, "valid": valid, "init": init_s, "files": files}
+        for root, fmap in extra_files.items():
+            done_extra[root][hour] = {"lead": hour, "valid": valid, "init": init_s, "files": fmap}
+
+        retain = hour if any(s[6] < 0 for s in specs) else 6
+        for h in [h for _v, h in precip_cache if h < hour - retain]:
+            for v in precip_vars:
+                precip_cache.pop((v, h), None)
+        print(f"  {tag}  valid {valid}  redrawn {redrawn}", flush=True)
+
+    extra = {"hourly_init": hourly_init, "synoptic_init": synoptic_init}
+    apply_domain("wide")
+    merge_manifest(
+        out, run=run, init=hourly_init, source=source, new_ids=field_ids,
+        done_hours=done_hours, extra=extra,
+    )
+    for name, root in extras:
+        apply_domain(name)
+        merge_manifest(
+            root, run=run, init=hourly_init, source=source, new_ids=field_ids,
+            done_hours=done_extra[root], extra=extra,
+        )
+    apply_domain("wide")
+    return redrawn
 
 
 def main() -> None:
@@ -1149,122 +1348,42 @@ def main() -> None:
     if not project_id:
         sys.exit("Set GOOGLE_CLOUD_PROJECT (needed as the GCS billing header).")
 
+    pnw_out = args.pnw_out
+    ca_out = args.ca_out
+    extras = [(n, p) for n, p in (("pnw", pnw_out), ("ca", ca_out)) if p]
+    for name, _p in extras:
+        warm_boundaries(name)
+    warm_boundaries("wide")
+
     if args.run:
         prefix = f"{PREFIX_ROOT}/{args.run}/predictions.zarr"
         ds = open_stats(prefix, project_id)
-        run = args.run
+        init_s = str(np.datetime64(ds.init_time.values, "s")) + "Z"
+        n = cook_one(
+            ds, prefix=prefix, targets=targets, field_ids=field_ids, out=args.out,
+            extras=extras, force=args.force, hourly_init=init_s, synoptic_init=init_s,
+        )
+        ds.close()
     else:
-        prefix, ds = latest_synoptic(project_id)
-        run = prefix.split("/")[-2]
+        hprefix, hds = latest_hourly_stats(project_id)
+        sprefix, sds = latest_synoptic(project_id)
+        hourly_init = str(np.datetime64(hds.init_time.values, "s")) + "Z"
+        synoptic_init = str(np.datetime64(sds.init_time.values, "s")) + "Z"
+        print(f"hourly {hourly_init}  synoptic {synoptic_init}", flush=True)
+        n = cook_one(
+            hds, prefix=hprefix, targets=[h for h in targets if h <= 48],
+            field_ids=field_ids, out=args.out, extras=extras, force=args.force,
+            hourly_init=hourly_init, synoptic_init=synoptic_init,
+        )
+        hds.close()
+        n += cook_one(
+            sds, prefix=sprefix, targets=[h for h in targets if h > 48],
+            field_ids=field_ids, out=args.out, extras=extras, force=args.force,
+            hourly_init=hourly_init, synoptic_init=synoptic_init,
+        )
+        sds.close()
+    print("COOK_STATUS=updated" if n else "COOK_STATUS=noop", flush=True)
 
-    init = np.datetime64(ds.init_time.values, "s")
-    lead_h = np.array([hours_since(v) for v in ds.lead_time.values])
-    index = {int(h): i for i, h in enumerate(lead_h)}
-    targets = [h for h in targets if h in index]
-    if not targets:
-        raise SystemExit("no matching lead times")
-
-    specs = [FIELDS[i] for i in field_ids]
-    precip_vars = sorted({s[2] for s in specs if s[6]})
-    inst_01 = [s for s in specs if s[5] == "0p1" and s[6] == 0]
-    inst_05 = [s for s in specs if s[5] == "0p05"]
-    precip_hours: set[int] = set()
-    for s in specs:
-        if not s[6]:
-            continue
-        for t in targets:
-            precip_hours.update(accum_hours(t, s[6]))
-
-    out = args.out
-    frames_root = out / "frames"
-    frames_root.mkdir(parents=True, exist_ok=True)
-    source = f"gs://{BUCKET}/{prefix}"
-    init_s = str(init) + "Z"
-    print(
-        f"run {run} init {init_s} fields {field_ids} frames {len(targets)}",
-        flush=True,
-    )
-
-    precip_cache: dict[tuple[str, int], np.ndarray] = {}
-    lon01 = lat01 = lon05 = lat05 = None
-    done: list[dict] = []
-
-    walk = sorted(h for h in (set(targets) | precip_hours) if h in index)
-    for hour in walk:
-        i = index[hour]
-        if hour in precip_hours and precip_vars:
-            missing = [v for v in precip_vars if (v, hour) not in precip_cache]
-            if missing:
-                sl = load_retry(crop(ds[missing].isel(lead_time=i)))
-                lon01, lat01 = mesh(sl[missing[0]])
-                for v in missing:
-                    precip_cache[(v, hour)] = np.asarray(sl[v])
-
-        if hour not in targets:
-            continue
-
-        valid = str(np.datetime64(ds.datetime.values[i], "s")) + "Z"
-        tag = f"f{hour:03d}"
-        files: dict[str, str] = {}
-        loaded01 = None
-        loaded05 = None
-
-        if inst_01:
-            need = [s[2] for s in inst_01]
-            loaded01 = load_retry(crop(ds[need].isel(lead_time=i)))
-            lon01, lat01 = mesh(loaded01[need[0]])
-        if inst_05:
-            need = [s[2] for s in inst_05]
-            loaded05 = load_retry(crop(ds[need].isel(lead_time=i)))
-            lon05, lat05 = mesh(loaded05[need[0]])
-
-        for fid, label, var, conv, pal, grid, accum in specs:
-            rel = f"frames/{fid}/{tag}.png"
-            path = out / rel
-            files[fid] = rel
-            if path.exists() and not args.force:
-                continue
-            if accum:
-                hours = accum_hours(hour, accum)
-                chunks = [precip_cache[(var, h)] for h in hours if (var, h) in precip_cache]
-                if not chunks:
-                    continue
-                z = conv(np.sum(chunks, axis=0))
-                lon, lat = lon01, lat01
-            elif grid == "0p05":
-                z = conv(np.asarray(loaded05[var]))
-                lon, lat = lon05, lat05
-            else:
-                z = conv(np.asarray(loaded01[var]))
-                lon, lat = lon01, lat01
-            extra = ""
-            if accum == 6 and hour < 6:
-                extra = f"  ({hour}h window)"
-            save_map(
-                path,
-                lon,
-                lat,
-                z,
-                title=plot_title(label, extra, valid, init_s, hour),
-                palette=pal,
-                contours=np.arange(960, 1060, 4) if fid == "slp" else None,
-            )
-
-        retain = hour if any(s[6] < 0 for s in specs) else 6
-        for h in [h for v, h in precip_cache if h < hour - retain]:
-            for v in precip_vars:
-                precip_cache.pop((v, h), None)
-
-        done.append({"lead": hour, "valid": valid, "files": files})
-        write_manifest(out, run=run, init=init_s, source=source, field_ids=field_ids, frames=done)
-        print(f"  {tag}  valid {valid}  n={len(done)}/{len(targets)}", flush=True)
-
-    assert done, "no frames written"
-    for fr in done:
-        for fid, rel in fr["files"].items():
-            p = out / rel
-            assert p.exists() and p.stat().st_size > 1000, p
-    print(f"manifest {out / 'manifest.json'}  n={len(done)}")
 
 
 if __name__ == "__main__":
