@@ -1,6 +1,6 @@
 {
-  "run": "20261010_17hr_01_preds",
-  "init": "2026-10-10T17:00:00Z",
+  "run": "20261010_23hr_01_preds",
+  "init": "2026-10-10T23:00:00Z",
   "domain": {
     "lat": [
       40.0,
@@ -11,8 +11,8 @@
       250.0
     ]
   },
-  "source": "earthengine:projects/gcp-public-data-weathernext/assets/weathernext_3_0_0_0p1deg hourly=2026-10-10T17:00:00Z synoptic=2026-10-10T12:00:00Z",
-  "note": "Maps only \u2014 no downloadable grids. Pacific Northwest: 40\u201355\u00b0N, 145\u2013110\u00b0W.",
+  "source": "earthengine:projects/gcp-public-data-weathernext/assets/weathernext_3_0_0_0p1deg hourly=2026-10-10T23:00:00Z synoptic=2026-10-10T18:00:00Z",
+  "note": "F+1\u201348 from latest hourly init (interim or synoptic). F+54\u2013360 from latest 15-day synoptic. Maps only \u2014 no downloadable grids. Pacific Northwest: 40\u201355\u00b0N, 145\u2013110\u00b0W.",
   "disclaimer": "WeatherNext 3 experimental research data. Not an official forecast, watch, or warning, and not NWS. Do not use for life-and-property decisions.",
   "keys": "\u2190 \u2192 step time \u00b7 space play \u00b7 Home/End ends",
   "variables": [
@@ -97,7 +97,7 @@
       "units": "%"
     }
   ],
-  "generated": "2026-10-11T04:15:43Z",
+  "generated": "2026-10-11T07:07:37Z",
   "frames": [
     {
       "lead": 1,
@@ -453,7 +453,7 @@
     },
     {
       "lead": 25,
-      "valid": "2026-10-11T12:00:00Z",
+      "valid": "2026-10-12T00:00:00Z",
       "files": {
         "wind10_p90": "frames/wind10_p90/f025.jpg",
         "wind10": "frames/wind10/f025.jpg",
@@ -462,7 +462,7 @@
         "qpf_acc": "frames/qpf_acc/f025.jpg",
         "station_t": "frames/station_t/f025.jpg"
       },
-      "init": "2026-10-10T11:00:00Z"
+      "init": "2026-10-10T23:00:00Z"
     },
     {
       "lead": 26,
@@ -2000,8 +2000,8 @@
       "init": "2026-10-09T12:00:00Z"
     }
   ],
-  "hourly_init": "2026-10-10T17:00:00Z",
-  "synoptic_init": "2026-10-10T12:00:00Z",
-  "ensemble_note": "Upper air is the 64-member mean from the ensemble Zarr, 6-hourly synoptic inits only (not the free stats mean).",
-  "ensemble_init": "2026-10-10T18:00:00Z"
+  "hourly_init": "2026-10-10T23:00:00Z",
+  "synoptic_init": "2026-10-10T18:00:00Z",
+  "ensemble_init": "2026-10-10T18:00:00Z",
+  "ensemble_note": "Upper air is the 64-member mean from the ensemble Zarr, 6-hourly synoptic inits only (not the free stats mean)."
 }
