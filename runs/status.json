@@ -47,6 +47,11 @@
       }
     },
     {
+      "id": "dt24",
+      "label": "24-hour temperature change",
+      "inits": {}
+    },
+    {
       "id": "qpf1_imerg",
       "label": "1-h IMERG",
       "inits": {
