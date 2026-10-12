@@ -1,5 +1,5 @@
 {
-  "run": "20261011_18hr_01_preds",
+  "run": "20261012_00hr_01_preds",
   "init": "2026-10-12T01:00:00Z",
   "domain": {
     "lat": [
@@ -11,7 +11,7 @@
       300.0
     ]
   },
-  "source": "gs://weathernext3_statistics_spatial/weathernext_3_0_0_statistics/zarr/2026_to_present/20261011_18hr_01_preds/predictions.zarr",
+  "source": "gs://weathernext3_statistics_spatial/weathernext_3_0_0_statistics/zarr/2026_to_present/20261012_00hr_01_preds/predictions.zarr",
   "note": "Free stats Zarr, ensemble mean. Maps only \u2014 no downloadable grids.",
   "disclaimer": "WeatherNext 3 experimental research data. Not an official forecast, watch, or warning, and not NWS. Do not use for life-and-property decisions.",
   "keys": "\u2190 \u2192 step time \u00b7 space play \u00b7 Home/End ends",
@@ -97,7 +97,7 @@
       "units": "%"
     }
   ],
-  "generated": "2026-10-12T07:56:53Z",
+  "generated": "2026-10-12T09:12:02Z",
   "frames": [
     {
       "lead": 1,
@@ -127,7 +127,7 @@
     },
     {
       "lead": 3,
-      "valid": "2026-10-12T01:00:00Z",
+      "valid": "2026-10-12T04:00:00Z",
       "files": {
         "qpf1_imerg": "frames/qpf1_imerg/f003.jpg",
         "station_t": "frames/station_t/f003.jpg",
@@ -136,7 +136,7 @@
         "slp": "frames/slp/f003.jpg",
         "wind10": "frames/wind10/f003.jpg"
       },
-      "init": "2026-10-11T22:00:00Z"
+      "init": "2026-10-12T01:00:00Z"
     },
     {
       "lead": 4,
@@ -805,7 +805,7 @@
     },
     {
       "lead": 54,
-      "valid": "2026-10-14T00:00:00Z",
+      "valid": "2026-10-14T06:00:00Z",
       "files": {
         "slp": "frames/slp/f054.jpg",
         "station_t": "frames/station_t/f054.jpg",
@@ -824,7 +824,7 @@
         "rh700": "frames/rh700/f054.jpg",
         "rh500": "frames/rh500/f054.jpg"
       },
-      "init": "2026-10-11T18:00:00Z"
+      "init": "2026-10-12T00:00:00Z"
     },
     {
       "lead": 60,
@@ -2001,7 +2001,7 @@
     }
   ],
   "hourly_init": "2026-10-12T01:00:00Z",
-  "synoptic_init": "2026-10-11T18:00:00Z",
+  "synoptic_init": "2026-10-12T00:00:00Z",
   "ensemble_note": "Upper air is the 64-member mean from the ensemble Zarr, 6-hourly synoptic inits only (not the free stats mean).",
-  "ensemble_init": "2026-10-11T18:00:00Z"
+  "ensemble_init": "2026-10-12T00:00:00Z"
 }
