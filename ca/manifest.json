@@ -1,6 +1,6 @@
 {
   "run": "20261011_18hr_01_preds",
-  "init": "2026-10-11T22:00:00Z",
+  "init": "2026-10-11T23:00:00Z",
   "domain": {
     "lat": [
       27.0,
@@ -97,11 +97,11 @@
       "units": "%"
     }
   ],
-  "generated": "2026-10-12T06:26:18Z",
+  "generated": "2026-10-12T06:56:57Z",
   "frames": [
     {
       "lead": 1,
-      "valid": "2026-10-11T23:00:00Z",
+      "valid": "2026-10-12T00:00:00Z",
       "files": {
         "station_t": "frames/station_t/f001.jpg",
         "qpf1_imerg": "frames/qpf1_imerg/f001.jpg",
@@ -110,7 +110,7 @@
         "wind10": "frames/wind10/f001.jpg",
         "wind10_p90": "frames/wind10_p90/f001.jpg"
       },
-      "init": "2026-10-11T22:00:00Z"
+      "init": "2026-10-11T23:00:00Z"
     },
     {
       "lead": 2,
@@ -2000,7 +2000,7 @@
       "init": "2026-10-11T18:00:00Z"
     }
   ],
-  "hourly_init": "2026-10-11T22:00:00Z",
+  "hourly_init": "2026-10-11T23:00:00Z",
   "synoptic_init": "2026-10-11T18:00:00Z",
   "ensemble_note": "Upper air is the 64-member mean from the ensemble Zarr, 6-hourly synoptic inits only (not the free stats mean).",
   "ensemble_init": "2026-10-11T18:00:00Z"
