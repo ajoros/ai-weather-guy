@@ -24,6 +24,10 @@
     .logo { width: 40px; height: 40px; display: block; }
     h1 { font-size: 18px; margin: 0; font-weight: 650; color: #eef1f6; letter-spacing: -0.02em; }
     .sub { margin-top: 2px; font-size: 12px; color: #8b93a2; }
+    .note {
+      margin: 0; padding: 14px 22px 0;
+      max-width: 52em; font-size: 13px; line-height: 1.45; color: #8b93a2;
+    }
     nav { display: flex; gap: 6px; }
     nav a {
       color: #c8cdd6; text-decoration: none; border: 1px solid #3a4150;
@@ -71,6 +75,7 @@
       <a class="on" href="./">Runs</a>
     </nav>
   </header>
+  <p class="note">Surface maps use the newest hourly run for hours 1 through 48, then the latest 00, 06, 12, or 18Z run every 6 hours out to 15 days. Upper-air maps are the 64-member mean from that same 6-hourly run only. This board updates when a cook finishes.</p>
   <div class="board" id="board"></div>
   <script>
     const pad = (n) => String(n).padStart(2, "0");

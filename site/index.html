@@ -72,6 +72,7 @@
       background: #eef2ff; color: #1a237e; font-size: 12px;
       padding: 6px 12px; border-radius: 999px; margin-top: 8px;
     }
+    .banner.stale { background: #fff4e5; color: #8a4b08; }
     .controls {
       display: flex; align-items: center; gap: 10px;
       margin-top: 8px;
@@ -113,6 +114,21 @@
       width: 100%; height: 100%; object-fit: contain;
       background: #fff; display: block;
     }
+    .map-wrap.loading img,
+    #lightbox .sheet.loading img { opacity: 0.35; }
+    .map-wrap.loading::after,
+    #lightbox .sheet.loading::after {
+      content: "";
+      position: absolute;
+      left: 50%; top: 50%;
+      width: 28px; height: 28px;
+      margin: -14px 0 0 -14px;
+      border: 3px solid #c5cae9;
+      border-top-color: #3d5afe;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
     figcaption { margin: 8px 2px 0; }
     .cap-title { font-size: 14px; font-weight: 550; color: #0b0c10; }
     .cap-sub { font-size: 12px; color: #5f6368; margin-top: 2px; }
@@ -144,7 +160,8 @@
       background: #fff;
       border-top: 1px solid #e6e8ef;
     }
-    #lightbox .lb-cap { flex: 1; color: #0b0c10; font-size: 13px; }
+    #lb-slider { flex: 1.2; min-width: 80px; }
+    #lightbox .lb-cap { flex: 1.4; min-width: 0; color: #0b0c10; font-size: 13px; }
     @media (max-width: 900px) {
       .maps { grid-template-columns: 1fr; padding: 16px; }
       header { padding: 10px 16px; }
@@ -214,6 +231,7 @@
       <button type="button" id="lb-prev">←</button>
       <button type="button" id="lb-play">Play</button>
       <button type="button" id="lb-next">→</button>
+      <input id="lb-slider" type="range" min="0" max="0" value="0" aria-label="Forecast hour" />
       <div class="lb-cap" id="lb-cap"></div>
       <button type="button" id="lb-x" aria-label="Close">×</button>
     </div>
@@ -534,6 +552,43 @@
       return src + "?t=" + encodeURIComponent(t);
     }
 
+    function staleLine() {
+      const init = manifest.hourly_init || manifest.init || "";
+      const t = new Date(init).getTime();
+      if (!init || Number.isNaN(t)) return "";
+      if ((Date.now() - t) / 3600000 <= 3) return "";
+      return "Maps are from the " + fmtRunZ(init) + " run. The newer run has not posted yet.";
+    }
+
+    function arm(img) {
+      if (img.dataset.armed) return;
+      img.dataset.armed = "1";
+      const done = () => {
+        const wrap = img.closest(".map-wrap") || img.closest(".sheet");
+        if (wrap) wrap.classList.remove("loading");
+      };
+      img.addEventListener("load", done);
+      img.addEventListener("error", done);
+    }
+
+    function paint(img, src) {
+      arm(img);
+      const wrap = img.closest(".map-wrap") || img.closest(".sheet");
+      if (!src) {
+        img.removeAttribute("src");
+        if (wrap) wrap.classList.remove("loading");
+        return;
+      }
+      let same = false;
+      try { same = img.src === new URL(src, location.href).href; } catch (e) { same = false; }
+      if (same && img.complete && img.naturalWidth > 0) {
+        if (wrap) wrap.classList.remove("loading");
+        return;
+      }
+      if (wrap) wrap.classList.add("loading");
+      img.src = src;
+    }
+
     function show() {
       const fr = manifest.frames[i];
       const runs = runLines(fr);
@@ -544,7 +599,12 @@
       const prog = progressLine(fr);
       $("progress").hidden = !prog;
       $("progress").textContent = prog;
+      const stuck = staleLine();
+      $("banner").textContent = stuck || manifest.disclaimer || "";
+      $("banner").classList.toggle("stale", !!stuck);
       $("slider").value = String(i);
+      $("lb-slider").max = $("slider").max;
+      $("lb-slider").value = String(i);
       for (const v of visibleVars()) {
         const img = $("img-" + v.id);
         if (!img) continue;
@@ -554,14 +614,14 @@
         const cap = fig && fig.querySelector("figcaption");
         if (src) {
           if (fig) fig.hidden = false;
-          img.src = src;
+          paint(img, src);
           fillCaption(cap, v, captionExtra(fr, use, v.id));
         } else if (UPPER_IDS.has(v.id)) {
           if (fig) fig.hidden = false;
-          img.removeAttribute("src");
+          paint(img, "");
           fillCaption(cap, v, captionExtra(fr, fr, v.id));
         } else {
-          img.removeAttribute("src");
+          paint(img, "");
           if (fig) fig.hidden = true;
         }
       }
@@ -573,10 +633,14 @@
         if (!src) {
           closeLightbox();
         } else {
-          lb.src = src;
           const parts = spec ? captionParts(spec, captionExtra(fr, use, openId)) : { title: openId, sub: "" };
           lb.alt = parts.title;
-          $("lb-cap").textContent = parts.title + (parts.sub ? " · " + parts.sub : "");
+          const runBit = UPPER_IDS.has(openId) ? runs.upper : runs.surface;
+          const bits = [parts.title];
+          if (parts.sub) bits.push(parts.sub);
+          if (runBit) bits.push(runBit);
+          $("lb-cap").textContent = bits.join(" · ");
+          paint(lb, src);
         }
       }
       preload(i - 1);
@@ -612,6 +676,10 @@
     }
 
     $("slider").addEventListener("input", (e) => {
+      i = Number(e.target.value);
+      show();
+    });
+    $("lb-slider").addEventListener("input", (e) => {
       i = Number(e.target.value);
       show();
     });
@@ -665,6 +733,7 @@
         manifest = m;
         $("banner").textContent = m.disclaimer || "";
         $("slider").max = String(Math.max(0, m.frames.length - 1));
+        $("lb-slider").max = $("slider").max;
         i = closestNowIndex(m.frames);
         setMeta();
         buildFigures();
@@ -682,6 +751,7 @@
               const nFrames = manifest.frames.length;
               manifest = next;
               $("slider").max = String(Math.max(0, next.frames.length - 1));
+              $("lb-slider").max = $("slider").max;
               const j = next.frames.findIndex((f) => f.lead === lead);
               i = j >= 0 ? j : 0;
               setMeta();
