@@ -114,6 +114,10 @@ def main() -> None:
     assert wlon[0] <= nlon[0] <= nlon[1] <= wlon[1]
     assert cook.domain_box_label(cook.DOMAINS["nepac"]) == "16–55°N, 164–108°W"
     assert FIELDS["dt24"][4] == "dt_f"
+    import xarray as xr
+    t = np.array(["2026-10-12T00:00", "NaT"], dtype="datetime64[ns]")
+    assert cook.still_writing(xr.Dataset(coords={"datetime": ("lead_time", t)}))
+    assert not cook.still_writing(xr.Dataset(coords={"datetime": ("lead_time", t[:1])}))
     lon_g = np.linspace(120.0, 300.0, 181)
     lat_g = np.linspace(75.0, 10.0, 66)
     grid = np.arange(lat_g.size * lon_g.size).reshape(lat_g.size, lon_g.size)

@@ -705,6 +705,11 @@ def hours_since(td) -> int:
     return int(np.asarray(td).astype("timedelta64[h]").astype(int))
 
 
+def still_writing(ds: xr.Dataset) -> bool:
+    """A lead with no valid time is a file Google has not finished writing."""
+    return bool(np.isnat(np.asarray(ds.datetime.values)).any())
+
+
 def latest_synoptic(project_id: str) -> tuple[str, xr.Dataset]:
     last: Exception | None = None
     for prefix in candidate_prefixes():
@@ -714,6 +719,10 @@ def latest_synoptic(project_id: str) -> tuple[str, xr.Dataset]:
             leads = [hours_since(v) for v in ds.lead_time.values]
             if max(leads) < 300:
                 print(f"skip interim {prefix}", flush=True)
+                ds.close()
+                continue
+            if still_writing(ds):
+                print(f"skip incomplete {prefix}", flush=True)
                 ds.close()
                 continue
             return prefix, ds
@@ -743,6 +752,10 @@ def latest_hourly_stats(project_id: str) -> tuple[str, xr.Dataset]:
             _ = ds.init_time.values
             hi = max(hours_since(v) for v in ds.lead_time.values)
             if hi < 48 or hi >= 300:
+                ds.close()
+                continue
+            if still_writing(ds):
+                print(f"skip incomplete {prefix}", flush=True)
                 ds.close()
                 continue
             return prefix, ds
@@ -1322,17 +1335,17 @@ def cook_one(
         tag = f"f{hour:03d}"
         loaded01 = loaded05 = None
         if inst_01 or want_barbs:
-            need = [s[2] for s in inst_01]
+            vars01 = [s[2] for s in inst_01]
             if want_barbs:
                 for name in (WIND_U, WIND_V):
-                    if name not in need:
-                        need.append(name)
-            loaded01 = load_retry(crop(ds[need].isel(lead_time=i)))
-            lon01, lat01 = mesh(loaded01[need[0]])
+                    if name not in vars01:
+                        vars01.append(name)
+            loaded01 = load_retry(crop(ds[vars01].isel(lead_time=i)))
+            lon01, lat01 = mesh(loaded01[vars01[0]])
         if inst_05:
-            need = list(dict.fromkeys(s[2] for s in inst_05))
-            loaded05 = load_retry(crop(ds[need].isel(lead_time=i)))
-            lon05, lat05 = mesh(loaded05[need[0]])
+            vars05 = list(dict.fromkeys(s[2] for s in inst_05))
+            loaded05 = load_retry(crop(ds[vars05].isel(lead_time=i)))
+            lon05, lat05 = mesh(loaded05[vars05[0]])
 
         files: dict[str, str] = {}
         extra_files: dict[Path, dict[str, str]] = {root: {} for _n, root in extras}
