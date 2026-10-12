@@ -1,0 +1,12 @@
+---
+description: Commit and push finished work in this repo without asking
+alwaysApply: true
+---
+
+# Commit and push
+
+When a change in this repo is finished and checked, commit it and push `main`. Do not ask first.
+
+- Leave the untracked experiments out: `bench_vm_size.sh`, `serve_windy.py`, `site/windy.html`, `site/zoom.html`.
+- Do not commit secrets. Do not force-push. Do not skip hooks.
+- After a push, run `./mirror_to_dropbox.sh` so the Dropbox copy matches GitHub.

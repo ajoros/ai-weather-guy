@@ -36,6 +36,8 @@
     .run-lab, .fc-lab { font-size: 11px; font-weight: 650; letter-spacing: 0.04em; color: #5f6368; }
     .fc-lab { margin-top: 6px; }
     .clock { font-size: 22px; font-weight: 700; letter-spacing: -0.02em; margin: 0; }
+    .run-upper { color: #5f6368; font-size: 13px; font-weight: 550; margin-top: 2px; }
+    .run-upper:empty { display: none; }
     .meta { color: #0b0c10; font-size: 15px; font-weight: 550; margin-top: 2px; }
     .progress { color: #1a237e; font-size: 12px; margin-top: 4px; }
     .wn3-box { position: relative; text-align: right; flex-shrink: 0; }
@@ -166,6 +168,7 @@
       <div class="when">
         <div class="run-lab">RUN TIME</div>
         <div class="clock" id="clock"></div>
+        <div class="run-upper" id="run-upper"></div>
         <div class="fc-lab">FORECAST TIME (LOCAL)</div>
         <div class="meta" id="meta">Loading…</div>
         <div class="progress" id="progress" hidden></div>
@@ -364,6 +367,23 @@
       return String(d.getUTCHours()).padStart(2, "0") + "Z " + mon + " " + day;
     }
 
+    // Two models feed one page: hourly surface (+1..+48) and the 6-hourly synoptic run
+    // (surface +54..+360 and every upper-air map). Say which run each number is.
+    function runLines(fr) {
+      const init = fr.init || manifest.init;
+      const upper = manifest.ensemble_init || "";
+      const surface = fmtRunZ(init) + (fr.lead <= 48 ? " · surface, hourly run" : " · surface, 6-hourly run");
+      return { surface, upper: upper ? "Upper air " + fmtRunZ(upper) + " · 6-hourly run" : "" };
+    }
+
+    function captionExtra(fr, use, id) {
+      const valid = fmtValidZ(use.valid || fr.valid);
+      if (!UPPER_IDS.has(id)) return valid;
+      // fr.init on leads <= 48 is the hourly surface run, not the run this PNG came from.
+      const init = manifest.ensemble_init || "";
+      return init ? valid + " · " + fmtRunZ(init) + " run" : valid;
+    }
+
     function fmtLocalValid(iso, lead) {
       const d = new Date(iso);
       if (Number.isNaN(d.getTime())) return iso;
@@ -516,9 +536,10 @@
 
     function show() {
       const fr = manifest.frames[i];
-      const init = fr.init || manifest.init;
+      const runs = runLines(fr);
       $("lead").textContent = "+" + fr.lead + "h";
-      $("clock").textContent = fmtRunZ(init);
+      $("clock").textContent = runs.surface;
+      $("run-upper").textContent = runs.upper;
       $("meta").textContent = fmtLocalValid(fr.valid, fr.lead);
       const prog = progressLine(fr);
       $("progress").hidden = !prog;
@@ -534,11 +555,11 @@
         if (src) {
           if (fig) fig.hidden = false;
           img.src = src;
-          fillCaption(cap, v, fmtValidZ(use.valid || fr.valid));
+          fillCaption(cap, v, captionExtra(fr, use, v.id));
         } else if (UPPER_IDS.has(v.id)) {
           if (fig) fig.hidden = false;
           img.removeAttribute("src");
-          fillCaption(cap, v, fmtValidZ(fr.valid));
+          fillCaption(cap, v, captionExtra(fr, fr, v.id));
         } else {
           img.removeAttribute("src");
           if (fig) fig.hidden = true;
@@ -553,7 +574,7 @@
           closeLightbox();
         } else {
           lb.src = src;
-          const parts = spec ? captionParts(spec, fmtValidZ(use.valid || fr.valid)) : { title: openId, sub: "" };
+          const parts = spec ? captionParts(spec, captionExtra(fr, use, openId)) : { title: openId, sub: "" };
           lb.alt = parts.title;
           $("lb-cap").textContent = parts.title + (parts.sub ? " · " + parts.sub : "");
         }
