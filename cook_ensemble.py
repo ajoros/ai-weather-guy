@@ -515,7 +515,7 @@ def _crop_extra(extra: dict, name: str) -> dict:
 def _crop_outs(args: argparse.Namespace) -> list[tuple[str, Path]]:
     return [
         (name, out)
-        for name, out in (("pnw", args.pnw_out), ("ca", args.ca_out))
+        for name, out in (("pnw", args.pnw_out), ("ca", args.ca_out), ("nepac", args.nepac_out))
         if out is not None
     ]
 
@@ -537,6 +537,12 @@ def parse_args() -> argparse.Namespace:
         type=Path,
         default=None,
         help="also draw the California domain (27–45°N, 145–110°W) from the arrays already loaded",
+    )
+    p.add_argument(
+        "--nepac-out",
+        type=Path,
+        default=None,
+        help="also draw the Northeast Pacific domain (16–55°N, 164–108°W) from the arrays already loaded",
     )
     p.add_argument("--members", type=int, default=64)
     p.add_argument("--force", action="store_true")

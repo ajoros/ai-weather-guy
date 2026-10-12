@@ -47,12 +47,12 @@ SITE="$ROOT/site"
 mkdir -p "$ROOT/.cache"
 
 # Surface maps from the free stats Zarr. Earth Engine is past its monthly quota.
-"$PY" cook.py --fields core --pnw-out "$SITE/pnw" --ca-out "$SITE/ca" || echo "surface cook failed"
+"$PY" cook.py --fields core --pnw-out "$SITE/pnw" --ca-out "$SITE/ca" --nepac-out "$SITE/nepac" || echo "surface cook failed"
 
-CHECK="$("$PY" cook_ensemble.py --check --out "$SITE" --pnw-out "$SITE/pnw" --ca-out "$SITE/ca" || true)"
+CHECK="$("$PY" cook_ensemble.py --check --out "$SITE" --pnw-out "$SITE/pnw" --ca-out "$SITE/ca" --nepac-out "$SITE/nepac" || true)"
 echo "$CHECK"
 if echo "$CHECK" | grep -q '^COOK_STATUS=needed$'; then
-  "$PY" cook_ensemble.py --out "$SITE" --pnw-out "$SITE/pnw" --ca-out "$SITE/ca" --members 64 || echo "ensemble cook failed"
+  "$PY" cook_ensemble.py --out "$SITE" --pnw-out "$SITE/pnw" --ca-out "$SITE/ca" --nepac-out "$SITE/nepac" --members 64 || echo "ensemble cook failed"
 fi
 
 # deploy_pages.sh exits 0 with "nothing to publish" when no JPEG changed.

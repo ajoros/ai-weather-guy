@@ -210,6 +210,7 @@
         <a class="region on" id="reg-wide" href="./">Wide</a>
         <a class="region" id="reg-pnw" href="pnw/">Pacific Northwest</a>
         <a class="region" id="reg-ca" href="ca/">California</a>
+        <a class="region" id="reg-nepac" href="nepac/">NE Pacific</a>
         <a class="region" id="reg-runs" href="runs/">Runs</a>
       </nav>
       <button id="prev" type="button">←</button>
@@ -238,16 +239,18 @@
   </div>
   <script>
     const $ = (id) => document.getElementById(id);
-    const SUB = (location.pathname.match(/\/(pnw|ca)(\/|$)/) || [])[1] || "";
+    const SUB = (location.pathname.match(/\/(pnw|ca|nepac)(\/|$)/) || [])[1] || "";
     const RUNS = /\/runs(\/|$)/.test(location.pathname);
     const ROOT = SUB || RUNS ? "../" : "./";
     $("reg-wide").href = ROOT;
     $("reg-pnw").href = ROOT + "pnw/";
     $("reg-ca").href = ROOT + "ca/";
+    $("reg-nepac").href = ROOT + "nepac/";
     $("reg-runs").href = ROOT + "runs/";
     const CROP = {
       pnw: { title: "Pacific Northwest", ratio: "7 / 3" },
       ca: { title: "California", ratio: "35 / 18" },
+      nepac: { title: "Northeast Pacific", ratio: "140 / 100" },
     };
     if (SUB) {
       document.title = "AI-Weather-Guy — " + CROP[SUB].title;
@@ -267,6 +270,10 @@
       station_t: {
         title: "Temperature near the ground",
         sub: "About 2 meters (6.5 feet) up, like a weather station · °F",
+      },
+      dt24: {
+        title: "Temperature change over 24 hours",
+        sub: "Station temperature now, minus the same spot 24 hours earlier · °F",
       },
       qpf1_imerg: {
         title: "Rain in the past hour",

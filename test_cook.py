@@ -49,7 +49,7 @@ def main() -> None:
     for name, pal in PALETTES.items():
         assert len(pal["colors"]) + 1 == len(pal["bounds"]), name
     assert parse_fields("core") == CORE_IDS
-    assert CORE_IDS == ["station_t", "qpf1_imerg", "qpf_acc", "slp", "wind10", "wind10_p90"]
+    assert CORE_IDS == ["station_t", "dt24", "qpf1_imerg", "qpf_acc", "slp", "wind10", "wind10_p90"]
     assert parse_fields("ensemble") == ENSEMBLE_IDS
     assert parse_fields("page") == PAGE_IDS
     assert page_field_ids({"variables": [{"id": "slp"}]}, ["h500"]) == ["slp", "h500"]
@@ -109,6 +109,11 @@ def main() -> None:
     assert wlon[0] <= clonb[0] <= clonb[1] <= wlon[1]
     assert clat == (27.0, 45.0) and clonb == (215.0, 250.0)
     assert cook.domain_box_label(cook.DOMAINS["ca"]) == "27–45°N, 145–110°W"
+    nlat, nlon = cook.DOMAINS["nepac"]["lat"], cook.DOMAINS["nepac"]["lon"]
+    assert wlat[0] <= nlat[0] <= nlat[1] <= wlat[1]
+    assert wlon[0] <= nlon[0] <= nlon[1] <= wlon[1]
+    assert cook.domain_box_label(cook.DOMAINS["nepac"]) == "16–55°N, 164–108°W"
+    assert FIELDS["dt24"][4] == "dt_f"
     lon_g = np.linspace(120.0, 300.0, 181)
     lat_g = np.linspace(75.0, 10.0, 66)
     grid = np.arange(lat_g.size * lon_g.size).reshape(lat_g.size, lon_g.size)

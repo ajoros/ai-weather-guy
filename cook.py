@@ -68,6 +68,15 @@ DOMAINS = {
         "fig": (18.0, 9.26),
         "thumb": (2100, 1080),
     },
+    # Mike's box: 15.66°N, 163.90°W to 55.29°N, 108.46°W. Inside the wide domain.
+    "nepac": {
+        "name": "nepac",
+        "place": "Northeast Pacific",
+        "lat": (15.660556, 55.287822),
+        "lon": (196.097896, 251.535367),
+        "fig": (18.0, 12.87),
+        "thumb": (2100, 1501),
+    },
 }
 LAT0, LAT1 = DOMAINS["wide"]["lat"]
 LON0, LON1 = DOMAINS["wide"]["lon"]
@@ -543,6 +552,25 @@ PALETTES: dict[str, dict] = {
         "ticks": np.arange(20, 135, 10),
         "bad": "#ffffff",
     },
+    # Cooling blue, no change white, warming red. Step 5°F.
+    "dt_f": {
+        "colors": [
+            "#08306b",
+            "#2171b5",
+            "#6baed6",
+            "#c6dbef",
+            "#f7f7f7",
+            "#fddbc7",
+            "#f4a582",
+            "#d6604d",
+            "#b2182b",
+            "#67001f",
+        ],
+        "bounds": np.arange(-25.0, 26.0, 5.0),
+        "label": "°F",
+        "ticks": np.arange(-20, 21, 10),
+        "bad": "#ffffff",
+    },
     # Dry tan → saturated blue. Values above 100% use the top color.
     "rh_pct": {
         "colors": [
@@ -577,6 +605,7 @@ def assert_palettes() -> None:
 # accum_hours=-1 means run total: sum forecast hours 1 through this lead.
 FIELD_ROWS = [
     ("station_t", "Station 2 m temperature", "station_head_temperature_2m_mean", k_to_f, "tmp_f", "0p05", 0),
+    ("dt24", "24-hour temperature change", "station_head_temperature_2m_mean", k_to_f, "dt_f", "0p05", 0),
     ("station_td", "Station 2 m dewpoint", "station_head_dewpoint_temperature_2m_mean", k_to_f, "dpt_f", "0p05", 0),
     ("t2m", "Gridded 2 m temperature", "temperature_2m_mean", k_to_f, "tmp_f", "0p1", 0),
     ("td", "Gridded 2 m dewpoint", "dewpoint_temperature_2m_mean", k_to_f, "dpt_f", "0p1", 0),
@@ -607,7 +636,7 @@ FIELD_ROWS = [
     ("cloud_high", "High cloud cover", "high_cloud_cover_mean", frac_to_pct, "cloud", "0p1", 0),
 ]
 FIELDS = {row[0]: row for row in FIELD_ROWS}
-CORE_IDS = ["station_t", "qpf1_imerg", "qpf_acc", "slp", "wind10", "wind10_p90"]
+CORE_IDS = ["station_t", "dt24", "qpf1_imerg", "qpf_acc", "slp", "wind10", "wind10_p90"]
 ENSEMBLE_IDS = [
     "h500",
     "t850",
@@ -747,6 +776,9 @@ def hour_fresh(
     """True when every domain already has this lead stamped for init_s. No Zarr read."""
     tag = f"f{hour:03d}.png"
     for fid in field_ids:
+        # F+1–24 have no hour 24 earlier in the file, so they are not stale.
+        if fid == "dt24" and hour < 25:
+            continue
         paths = [out / "frames" / fid / tag]
         paths.extend(root / "frames" / fid / tag for _name, root in extras)
         if not all(frame_current(p, init_s) for p in paths):
@@ -1192,6 +1224,7 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--out", type=Path, default=SITE)
     p.add_argument("--pnw-out", type=Path, default=None)
     p.add_argument("--ca-out", type=Path, default=None)
+    p.add_argument("--nepac-out", type=Path, default=None)
     p.add_argument("--force", action="store_true")
     return p.parse_args()
 
@@ -1297,7 +1330,7 @@ def cook_one(
             loaded01 = load_retry(crop(ds[need].isel(lead_time=i)))
             lon01, lat01 = mesh(loaded01[need[0]])
         if inst_05:
-            need = [s[2] for s in inst_05]
+            need = list(dict.fromkeys(s[2] for s in inst_05))
             loaded05 = load_retry(crop(ds[need].isel(lead_time=i)))
             lon05, lat05 = mesh(loaded05[need[0]])
 
@@ -1307,7 +1340,15 @@ def cook_one(
             rel = f"frames/{fid}/{tag}.png"
             path = out / rel
             files[fid] = rel
-            if accum:
+            if fid == "dt24":
+                prev_h = hour - 24
+                if prev_h not in index or loaded05 is None or var not in loaded05:
+                    files.pop(fid, None)
+                    continue
+                prev = load_retry(crop(ds[var].isel(lead_time=index[prev_h])))
+                z = k_to_f(np.asarray(loaded05[var])) - k_to_f(np.asarray(prev))
+                lon, lat = lon05, lat05
+            elif accum:
                 hours = [h for h in accum_hours(hour, accum) if (var, h) in precip_cache]
                 if not hours:
                     continue
@@ -1378,7 +1419,8 @@ def main() -> None:
 
     pnw_out = args.pnw_out
     ca_out = args.ca_out
-    extras = [(n, p) for n, p in (("pnw", pnw_out), ("ca", ca_out)) if p]
+    nepac_out = args.nepac_out
+    extras = [(n, p) for n, p in (("pnw", pnw_out), ("ca", ca_out), ("nepac", nepac_out)) if p]
     for name, _p in extras:
         warm_boundaries(name)
     warm_boundaries("wide")

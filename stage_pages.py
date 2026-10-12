@@ -134,7 +134,7 @@ def main() -> int:
         status = site / "runs" / "status.json"
         if status.is_file():
             shutil.copy2(status, runs_dest / "status.json")
-    for name in ("pnw", "ca"):
+    for name in ("pnw", "ca", "nepac"):
         man = site / name / "manifest.json"
         if man.is_file() and man.stat().st_size > 0:
             n += stage(site / name, dest / name, root=False)
