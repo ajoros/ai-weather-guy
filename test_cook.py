@@ -66,6 +66,15 @@ def main() -> None:
         png.with_suffix(".init").write_text(f"stats {init}\n")
         assert frame_current(png, init)
         assert not frame_current(png, "2026-10-11T11:00:00Z")
+        wide = Path(d) / "wide"
+        pnw = Path(d) / "pnw"
+        for root in (wide, pnw):
+            p = root / "frames" / "slp" / "f054.png"
+            p.parent.mkdir(parents=True)
+            p.write_bytes(b"x" * 1001)
+            p.with_suffix(".init").write_text(f"stats {init}\n")
+        assert cook.hour_fresh(54, ["slp"], wide, [("pnw", pnw)], init)
+        assert not cook.hour_fresh(54, ["slp", "wind10"], wide, [("pnw", pnw)], init)
     assert "AI-Weather-Guy" in WATERMARK and "ajoros.github.io" in WATERMARK
     assert "WeatherNext 3" in WATERMARK
     assert FIELDS["h500"][4] == "wind_kt_pw" and FIELDS["t850"][4] == "tmp_c"
@@ -128,8 +137,6 @@ def main() -> None:
     assert (x1 - x0) < 50 and (y1 - y0) < 30, (x0, x1, y0, y1)
     cook.apply_domain("wide")
     assert cook.LAT0 == 10.0 and cook.LON1 == 300.0
-    from pathlib import Path
-    import tempfile
     from cook_ensemble import dest_is_live, ensemble_current, ensemble_leads, resolve_merge_init, slp_marks
     assert resolve_merge_init("2026-09-26T06:00:00Z", Path("/tmp"), ["h500"]) == "2026-09-26T06:00:00Z"
     with tempfile.TemporaryDirectory(dir="/tmp") as tmp:
@@ -185,8 +192,6 @@ def main() -> None:
     assert synoptic_frames_current(
         {"frames": [{"lead": 1, "init": "H"}, {"lead": 54, "init": "S"}]}, "S"
     )
-    from pathlib import Path
-    import tempfile
     from PIL import Image
     with tempfile.TemporaryDirectory(dir="/tmp") as tmp:
         out = Path(tmp)
@@ -260,8 +265,6 @@ def main() -> None:
     assert parse_tile_path("/ee/tiles/slp/1/5/4/10.png") == ("slp", 1, 5, 4, 10)
     assert parse_tile_path("/nope") is None
     assert MIN_PNG_W >= 1800
-    from pathlib import Path
-    import tempfile
     from PIL import Image
 
     n = {"i": 0}

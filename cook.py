@@ -737,6 +737,23 @@ def frame_current(path: Path, init_s: str) -> bool:
         return False
 
 
+def hour_fresh(
+    hour: int,
+    field_ids: list[str],
+    out: Path,
+    extras: list[tuple[str, Path]],
+    init_s: str,
+) -> bool:
+    """True when every domain already has this lead stamped for init_s. No Zarr read."""
+    tag = f"f{hour:03d}.png"
+    for fid in field_ids:
+        paths = [out / "frames" / fid / tag]
+        paths.extend(root / "frames" / fid / tag for _name, root in extras)
+        if not all(frame_current(p, init_s) for p in paths):
+            return False
+    return True
+
+
 def crop(da: xr.DataArray) -> xr.DataArray:
     if "lat_0p05" in da.dims:
         return da.sel(lat_0p05=slice(LAT0, LAT1), lon_0p05=slice(LON0, LON1))
@@ -1224,11 +1241,22 @@ def cook_one(
     inst_01 = [s for s in specs if s[5] == "0p1" and s[6] == 0]
     inst_05 = [s for s in specs if s[5] == "0p05"]
     want_barbs = "wind10" in field_ids
+    # Stamp check before any download. Far leads stay put until the synoptic init changes.
+    if force:
+        need = set(targets)
+    else:
+        need = {
+            h for h in targets
+            if not hour_fresh(h, field_ids, out, extras, init_s)
+        }
+    skipped = len(targets) - len(need)
+    if skipped:
+        print(f"  skip {skipped} leads already stamped {init_s}", flush=True)
     precip_hours: set[int] = set()
     for s in specs:
         if not s[6]:
             continue
-        for t in targets:
+        for t in need:
             precip_hours.update(h for h in accum_hours(t, s[6]) if h in index)
 
     apply_domain("wide")
@@ -1245,7 +1273,7 @@ def cook_one(
     done_hours: dict[int, dict] = {}
     done_extra: dict[Path, dict[int, dict]] = {root: {} for _n, root in extras}
 
-    for hour in sorted(set(targets) | precip_hours):
+    for hour in sorted(need | precip_hours):
         i = index[hour]
         if hour in precip_hours and precip_vars:
             missing = [v for v in precip_vars if (v, hour) not in precip_cache]
@@ -1254,7 +1282,7 @@ def cook_one(
                 lon01, lat01 = mesh(sl[missing[0]])
                 for v in missing:
                     precip_cache[(v, hour)] = np.asarray(sl[v])
-        if hour not in targets:
+        if hour not in need:
             continue
 
         valid = str(np.datetime64(ds.datetime.values[i], "s")) + "Z"
