@@ -800,9 +800,14 @@ def hour_fresh(
 
 
 def crop(da: xr.DataArray) -> xr.DataArray:
+    # Always the wide window. apply_domain() moves LAT0/LON0 while a region is
+    # drawn, and the next 24-hour difference was subtracting a Northeast Pacific
+    # grid from the wide grid.
+    lat0, lat1 = DOMAINS["wide"]["lat"]
+    lon0, lon1 = DOMAINS["wide"]["lon"]
     if "lat_0p05" in da.dims:
-        return da.sel(lat_0p05=slice(LAT0, LAT1), lon_0p05=slice(LON0, LON1))
-    return da.sel(lat_0p1=slice(LAT0, LAT1), lon_0p1=slice(LON0, LON1))
+        return da.sel(lat_0p05=slice(lat0, lat1), lon_0p05=slice(lon0, lon1))
+    return da.sel(lat_0p1=slice(lat0, lat1), lon_0p1=slice(lon0, lon1))
 
 
 def load_retry(obj, tries: int = 4):
@@ -1244,9 +1249,12 @@ def parse_args() -> argparse.Namespace:
 
 def _emit(domain: str, dest: Path, lon, lat, z, *, title, palette, contours, barbs, init_s: str) -> None:
     apply_domain(domain)
-    dest.parent.mkdir(parents=True, exist_ok=True)
-    save_map(dest, lon, lat, z, title=title, palette=palette, contours=contours, barbs=barbs)
-    write_text_publish(dest.with_suffix(".init"), f"stats {init_s}\n")
+    try:
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        save_map(dest, lon, lat, z, title=title, palette=palette, contours=contours, barbs=barbs)
+        write_text_publish(dest.with_suffix(".init"), f"stats {init_s}\n")
+    finally:
+        apply_domain("wide")
 
 
 def _subset_field(lon, lat, z, barbs, reg: dict):
