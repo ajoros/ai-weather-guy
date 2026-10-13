@@ -118,6 +118,8 @@ def main() -> None:
     t = np.array(["2026-10-12T00:00", "NaT"], dtype="datetime64[ns]")
     assert cook.still_writing(xr.Dataset(coords={"datetime": ("lead_time", t)}))
     assert not cook.still_writing(xr.Dataset(coords={"datetime": ("lead_time", t[:1])}))
+    epoch = np.array(["2026-10-12T00:00", "1970-01-01T00:00"], dtype="datetime64[ns]")
+    assert cook.still_writing(xr.Dataset(coords={"datetime": ("lead_time", epoch)}))
     lon_g = np.linspace(120.0, 300.0, 181)
     lat_g = np.linspace(75.0, 10.0, 66)
     grid = np.arange(lat_g.size * lon_g.size).reshape(lat_g.size, lon_g.size)

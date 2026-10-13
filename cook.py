@@ -706,8 +706,12 @@ def hours_since(td) -> int:
 
 
 def still_writing(ds: xr.Dataset) -> bool:
-    """A lead with no valid time is a file Google has not finished writing."""
-    return bool(np.isnat(np.asarray(ds.datetime.values)).any())
+    """A lead with no valid time is a file Google has not finished writing.
+
+    Unwritten chunks read back as NaT or as the fill value 0, which decodes to 1970.
+    """
+    t = np.asarray(ds.datetime.values)
+    return bool(np.isnat(t).any() or (t < np.datetime64("2000-01-01")).any())
 
 
 def latest_synoptic(project_id: str) -> tuple[str, xr.Dataset]:
@@ -1341,6 +1345,10 @@ def cook_one(
 
         valid = str(np.datetime64(ds.datetime.values[i], "s")) + "Z"
         tag = f"f{hour:03d}"
+        if valid < "2000":
+            # Google has not written this hour yet. Do not stamp a blank frame.
+            print(f"  skip {tag}: hour not written yet", flush=True)
+            continue
         loaded01 = loaded05 = None
         if inst_01 or want_barbs:
             vars01 = [s[2] for s in inst_01]
@@ -1375,8 +1383,8 @@ def cook_one(
                     continue
                 z = conv(np.sum([precip_cache[(var, h)] for h in hours], axis=0))
                 lon, lat = lon01, lat01
-                if not np.nanmax(z) > 0:
-                    print(f"  warn {fid} {tag} is all zero", flush=True)
+                if not np.isfinite(z).any() or not np.nanmax(z) > 0:
+                    print(f"  warn {fid} {tag} is empty", flush=True)
             elif grid == "0p05":
                 z = conv(np.asarray(loaded05[var]))
                 lon, lat = lon05, lat05
