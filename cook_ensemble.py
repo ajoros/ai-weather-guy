@@ -59,9 +59,9 @@ class DropboxBusy(RuntimeError):
 ENS_BUCKET = "weathernext3_spatial"
 ENS_ROOT = "weathernext_3_0_0/zarr/2026_to_present"
 KT = 1.943844
-# ponytail: 3 draws on the 4-vCPU VM so one core stays free. Ceiling: RAM and
-# how fast Cloud Storage answers. Upgrade: set this to vCPU-1 on a larger machine.
-DRAW_WORKERS = 3
+# ponytail: leave two vCPUs for the reads and the OS. 6 on c4-standard-8, 2 on
+# e2-standard-4. Ceiling: RAM (one map per worker) and how fast Cloud Storage answers.
+DRAW_WORKERS = max(2, (os.cpu_count() or 2) - 2)
 _WORKER_DS: xr.Dataset | None = None
 
 
@@ -569,7 +569,7 @@ def _parallel_map(fn, items, workers, initializer=None, initargs=(), on_done=Non
 def _self_check() -> None:
     got = _parallel_map(_add_one, [1, 2, 3, 4, 5], DRAW_WORKERS)
     assert sorted(got) == [2, 3, 4, 5, 6], got
-    assert DRAW_WORKERS == 3
+    assert 2 <= DRAW_WORKERS <= (os.cpu_count() or 2), DRAW_WORKERS
     print("ensemble parallel ok", DRAW_WORKERS)
 
 
