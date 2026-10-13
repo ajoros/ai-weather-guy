@@ -13,10 +13,11 @@ from __future__ import annotations
 
 import argparse
 import json
+import multiprocessing as mp
 import os
 import sys
 import time
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import ProcessPoolExecutor, as_completed
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
@@ -58,6 +59,10 @@ class DropboxBusy(RuntimeError):
 ENS_BUCKET = "weathernext3_spatial"
 ENS_ROOT = "weathernext_3_0_0/zarr/2026_to_present"
 KT = 1.943844
+# ponytail: 3 draws on the 4-vCPU VM so one core stays free. Ceiling: RAM and
+# how fast Cloud Storage answers. Upgrade: set this to vCPU-1 on a larger machine.
+DRAW_WORKERS = 3
+_WORKER_DS: xr.Dataset | None = None
 
 
 def ens_prefixes() -> list[str]:
@@ -520,6 +525,54 @@ def _crop_outs(args: argparse.Namespace) -> list[tuple[str, Path]]:
     ]
 
 
+def _ens_worker_init(project_id: str, prefix: str) -> None:
+    global _WORKER_DS
+    _WORKER_DS = open_ens(prefix, project_id)
+    for name in cook.DOMAINS:
+        cook.warm_boundaries(name)
+
+
+def _ens_worker_draw(job: tuple) -> str:
+    hour, fid, dest, members, force, crops, init, box = job
+    if _WORKER_DS is None:
+        raise RuntimeError("ensemble worker has no dataset")
+    loaded = _load_field(_WORKER_DS, init, hour, fid, members, box)
+    crop_args = [(name, Path(path), flag) for name, path, flag in crops]
+    return plot_one(
+        _WORKER_DS, init, hour, fid, Path(dest), members, force, crop_args, loaded
+    )
+
+
+def _add_one(n: int) -> int:
+    return n + 1
+
+
+def _parallel_map(fn, items, workers, initializer=None, initargs=(), on_done=None):
+    # ponytail: spawn, not fork. The parent already opened the GCS client; a fork
+    # copies that client and the child can hang. Upgrade: a process pool per VM size.
+    ctx = mp.get_context("spawn")
+    kwargs = {"max_workers": workers, "mp_context": ctx}
+    if initializer is not None:
+        kwargs["initializer"] = initializer
+        kwargs["initargs"] = initargs
+    out = []
+    with ProcessPoolExecutor(**kwargs) as pool:
+        futures = [pool.submit(fn, item) for item in items]
+        for fut in as_completed(futures):
+            item = fut.result()
+            out.append(item)
+            if on_done is not None:
+                on_done(item, len(out))
+    return out
+
+
+def _self_check() -> None:
+    got = _parallel_map(_add_one, [1, 2, 3, 4, 5], DRAW_WORKERS)
+    assert sorted(got) == [2, 3, 4, 5, 6], got
+    assert DRAW_WORKERS == 3
+    print("ensemble parallel ok", DRAW_WORKERS)
+
+
 def parse_args() -> argparse.Namespace:
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--init", default="", help="ISO init UTC; default = latest synoptic ensemble")
@@ -606,11 +659,12 @@ def main() -> None:
         tag = datetime.fromisoformat(args.init.replace("Z", "+00:00")).strftime(
             "%Y%m%d_%Hhr_01_preds"
         )
-        ds = open_ens(f"{ENS_ROOT}/{tag}/predictions.zarr", project_id)
+        prefix = f"{ENS_ROOT}/{tag}/predictions.zarr"
+        ds = open_ens(prefix, project_id)
         init = args.init
     else:
         try:
-            _prefix, ds, init = latest_ens(project_id)
+            prefix, ds, init = latest_ens(project_id)
         except DropboxBusy as exc:
             sys.exit(f"dropbox busy: {exc}")
     extra["ensemble_init"] = init
@@ -636,11 +690,11 @@ def main() -> None:
         return
 
     print(
-        f"ensemble {init}  members {args.members}  fields {field_ids}  frames {len(leads)}",
+        f"ensemble {init}  members {args.members}  fields {field_ids}  "
+        f"frames {len(leads)}  workers {DRAW_WORKERS}",
         flush=True,
     )
     t0 = time.time()
-    n = 0
     seq = [(hour, fid) for hour in leads for fid in field_ids]
     jobs = len(seq)
     wide_box = (float(LAT0), float(LAT1), float(LON0), float(LON1))
@@ -655,51 +709,53 @@ def main() -> None:
                 return True
         return False
 
-    # ponytail: one extra Zarr read in flight. Same bytes, overlapped with the draw.
-    # Ceiling: two maps of RAM. The read uses wide_box, not the crop bounds.
-    inflight: tuple[int, str, object] | None = None
-    with ThreadPoolExecutor(max_workers=1) as pool:
-        for i, (hour, fid) in enumerate(seq):
-            dest = args.out / f"frames/{fid}/f{hour:03d}.png"
-            crops = [
-                (name, crop_out / f"frames/{fid}/f{hour:03d}.png", crop_force[name])
-                for name, crop_out in _crop_outs(args)
-            ]
-            loaded = None
-            if must_draw(hour, fid):
-                if inflight is not None and inflight[0] == hour and inflight[1] == fid:
-                    loaded = inflight[2].result()
-                    inflight = None
-                else:
-                    if inflight is not None:
-                        inflight[2].result()
-                        inflight = None
-                    loaded = _load_field(ds, init, hour, fid, args.members, wide_box)
-                nxt = next((pair for pair in seq[i + 1 :] if must_draw(*pair)), None)
-                if nxt is not None:
-                    inflight = (
-                        nxt[0],
-                        nxt[1],
-                        pool.submit(
-                            _load_field, ds, init, nxt[0], nxt[1], args.members, wide_box
-                        ),
-                    )
-            elif inflight is not None and inflight[0] == hour and inflight[1] == fid:
-                inflight[2].result()
-                inflight = None
-            msg = plot_one(
-                ds, init, hour, fid, dest, args.members, args.force, crops, loaded
-            )
-            n += 1
-            print(f"  {msg}  {n}/{jobs}  {time.time() - t0:.0f}s", flush=True)
-            if (i + 1) % len(field_ids) == 0:
-                merge_from_disk(args.out, field_ids, init, extra)
-                for name, crop_out in _crop_outs(args):
-                    merge_from_disk(crop_out, field_ids, init, _crop_extra(extra, name))
+    pending = []
+    skipped = 0
+    for hour, fid in seq:
+        dest = args.out / f"frames/{fid}/f{hour:03d}.png"
+        crops = [
+            (name, str(crop_out / f"frames/{fid}/f{hour:03d}.png"), crop_force[name])
+            for name, crop_out in _crop_outs(args)
+        ]
+        if not must_draw(hour, fid):
+            skipped += 1
+            continue
+        pending.append(
+            (hour, fid, str(dest), args.members, args.force, crops, init, wide_box)
+        )
+    if skipped:
+        print(f"  skip {skipped} frames already stamped {init}", flush=True)
     ds.close()
+
+    def _merge_all() -> None:
+        merge_from_disk(args.out, field_ids, init, extra)
+        for name, crop_out in _crop_outs(args):
+            merge_from_disk(crop_out, field_ids, init, _crop_extra(extra, name))
+
+    try:
+        if pending:
+            def _on_done(msg: str, n_done: int) -> None:
+                print(
+                    f"  {msg}  {skipped + n_done}/{jobs}  {time.time() - t0:.0f}s",
+                    flush=True,
+                )
+
+            _parallel_map(
+                _ens_worker_draw,
+                pending,
+                DRAW_WORKERS,
+                initializer=_ens_worker_init,
+                initargs=(project_id, prefix),
+                on_done=_on_done,
+            )
+    finally:
+        _merge_all()
     print(f"manifest {args.out / 'manifest.json'}  {time.time() - t0:.0f}s", flush=True)
     print("COOK_STATUS=updated", flush=True)
 
 
 if __name__ == "__main__":
-    main()
+    if len(sys.argv) > 1 and sys.argv[1] == "--self-check":
+        _self_check()
+    else:
+        main()
