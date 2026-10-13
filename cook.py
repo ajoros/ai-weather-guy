@@ -1375,6 +1375,8 @@ def cook_one(
                     continue
                 z = conv(np.sum([precip_cache[(var, h)] for h in hours], axis=0))
                 lon, lat = lon01, lat01
+                if not np.nanmax(z) > 0:
+                    print(f"  warn {fid} {tag} is all zero", flush=True)
             elif grid == "0p05":
                 z = conv(np.asarray(loaded05[var]))
                 lon, lat = lon05, lat05
