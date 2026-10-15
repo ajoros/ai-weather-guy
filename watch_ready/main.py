@@ -73,7 +73,7 @@ def check_line(
     action: str,
 ) -> str:
     return (
-        f"{when} check  google surface {_newest(stats_ready)}, "
+        f"{when} check  google {_six(stats_ready, hourly_init, 'surface')}, "
         f"{_six(syn_ready, synoptic_init, 'synoptic')}, "
         f"{_six(ens_ready, ensemble_init, 'ensemble')} | "
         f"page hourly {hourly_init or 'none'}, synoptic {synoptic_init or 'none'}, "
@@ -266,7 +266,7 @@ def watch(request):
     try:
         status = _instance_status(token)
         now = datetime.now(timezone.utc).replace(minute=0, second=0, microsecond=0)
-        hours = [now - timedelta(hours=i) for i in range(8)]
+        hours = [now - timedelta(hours=i) for i in range(18)]
         syn = now.replace(hour=(now.hour // 6) * 6)
         cycles = [syn - timedelta(hours=6 * i) for i in range(4)]
         stats_ready = _ready(token, STATS_BUCKET, STATS_ROOT, hours)
