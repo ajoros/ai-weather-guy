@@ -90,4 +90,8 @@ if [ -n "$EXPECTED" ]; then
 else
   git -C "$WORK" push origin "$COMMIT":refs/heads/gh-pages
 fi
+# Keep one commit locally. The old objects are what filled the 40 GB disk.
+git -C "$WORK" checkout -B gh-pages "$COMMIT"
+git -C "$WORK" reflog expire --expire=now --all
+git -C "$WORK" gc --prune=now --quiet
 echo "done." >&2
