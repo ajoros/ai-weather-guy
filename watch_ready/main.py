@@ -6,6 +6,7 @@ Cloud Scheduler calls this every 5 minutes. An empty check does not boot the VM.
 from __future__ import annotations
 
 import json
+import os
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -49,11 +50,26 @@ def _run_iso(stamp: datetime) -> str:
 
 
 def _token() -> str:
-    req = urllib.request.Request(
-        "http://metadata.google.internal/computeMetadata/v1/instance/service-accounts/default/token",
-        headers={"Metadata-Flavor": "Google"},
-    )
-    with urllib.request.urlopen(req, timeout=5) as resp:
+    """The WeatherNext buckets allow the same user login the VM already uses."""
+    raw = os.environ.get("WN3_ADC")
+    if not raw:
+        req = urllib.request.Request(
+            "http://metadata.google.internal/computeMetadata/v1/instance/service-accounts/default/token",
+            headers={"Metadata-Flavor": "Google"},
+        )
+        with urllib.request.urlopen(req, timeout=5) as resp:
+            return json.load(resp)["access_token"]
+    info = json.loads(raw)
+    data = urllib.parse.urlencode(
+        {
+            "client_id": info["client_id"],
+            "client_secret": info["client_secret"],
+            "refresh_token": info["refresh_token"],
+            "grant_type": "refresh_token",
+        }
+    ).encode()
+    req = urllib.request.Request("https://oauth2.googleapis.com/token", data=data)
+    with urllib.request.urlopen(req, timeout=10) as resp:
         return json.load(resp)["access_token"]
 
 
@@ -72,8 +88,12 @@ def _get(url: str, token: str, timeout: int = 15) -> tuple[int, bytes]:
 def _success(token: str, bucket: str, folder: str) -> bool:
     name = urllib.parse.quote(f"{folder}/success", safe="")
     url = f"https://storage.googleapis.com/storage/v1/b/{bucket}/o/{name}?fields=name"
-    code, _body = _get(url, token, timeout=10)
-    return code == 200
+    code, body = _get(url, token, timeout=10)
+    if code == 200:
+        return True
+    if code == 404:
+        return False
+    raise RuntimeError(f"{bucket} {code} {body[:120]!r}")
 
 
 def _ready(token: str, bucket: str, root: str, stamps: list[datetime]) -> list[str]:
@@ -121,7 +141,9 @@ def watch(request):
     token = _token()
     status = _instance_status(token)
     if status in ("RUNNING", "STAGING", "PROVISIONING", "STOPPING"):
-        return (json.dumps({"boot": False, "reason": status.lower()}), 200)
+        body = json.dumps({"boot": False, "reason": status.lower()})
+        print(body, flush=True)
+        return (body, 200)
     now = datetime.now(timezone.utc).replace(minute=0, second=0, microsecond=0)
     hours = [now - timedelta(hours=i) for i in range(8)]
     syn = now.replace(hour=(now.hour // 6) * 6)
@@ -131,7 +153,9 @@ def watch(request):
         ens_ready = _ready(token, ENS_BUCKET, ENS_ROOT, cycles)
         manifest = _manifest()
     except Exception as exc:
-        return (json.dumps({"boot": False, "reason": f"check failed: {exc}"}), 200)
+        body = json.dumps({"boot": False, "reason": f"check failed: {exc}"})
+        print(body, flush=True)
+        return (body, 200)
     reason = decide(
         manifest.get("hourly_init") or "",
         manifest.get("synoptic_init") or "",
@@ -140,9 +164,12 @@ def watch(request):
         ens_ready,
     )
     if not reason:
-        return (json.dumps({"boot": False, "reason": "current"}), 200)
-    code = _start(token)
-    return (json.dumps({"boot": code in (200, 409), "start": code, "reason": reason}), 200)
+        body = json.dumps({"boot": False, "reason": "current"})
+    else:
+        code = _start(token)
+        body = json.dumps({"boot": code in (200, 409), "start": code, "reason": reason})
+    print(body, flush=True)
+    return (body, 200)
 
 
 def _self_check() -> None:
