@@ -262,7 +262,7 @@
     }
     const CLOUD_LAYERS = new Set(["cloud_low", "cloud_mid", "cloud_high"]);
     const CORE_IDS = ["station_t", "qpf1_imerg", "qpf_acc", "slp", "wind10", "wind10_p90"];
-    const UPPER_IDS = new Set(["h500", "t850", "wind925", "wind700", "wind500", "wind300", "rh925", "rh850", "rh700", "rh500"]);
+    const UPPER_IDS = new Set(["ivt", "h500", "t850", "wind925", "wind700", "wind500", "wind300", "rh925", "rh850", "rh700", "rh500"]);
     const HOURLY_LEADS = Array.from({ length: 48 }, (_, n) => n + 1);
     const SYN_LEADS = Array.from({ length: 52 }, (_, n) => 54 + n * 6);
     const ENS_LEADS = Array.from({ length: 60 }, (_, n) => 6 + n * 6);
@@ -294,6 +294,10 @@
       wind10_p90: {
         title: "Stronger wind gusts",
         sub: "90th percentile of the ensemble — a gusty-day proxy · mph",
+      },
+      ivt: {
+        title: "Integrated vapor transport and sea-level pressure",
+        sub: "Water vapor the wind carries from 1000 to 300 mb, mean of 64 members · kg per meter per second · black lines are pressure, hPa",
       },
       h500: {
         title: "500 mb height and wind",

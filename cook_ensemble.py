@@ -51,6 +51,7 @@ from cook import (
     plot_title,
     save_map,
 )
+from plot_wn3_stats import PREFIX_ROOT, open_stats
 
 
 class DropboxBusy(RuntimeError):
@@ -63,6 +64,25 @@ KT = 1.943844
 # e2-standard-4. Ceiling: RAM (one map per worker) and how fast Cloud Storage answers.
 DRAW_WORKERS = max(2, (os.cpu_count() or 2) - 2)
 _WORKER_DS: xr.Dataset | None = None
+_WORKER_STATS: xr.Dataset | None = None
+# 1000–300 hPa. Reynolds et al. 2022, MWR: IVT = −(1/g) ∫_1000^300 q V dp.
+# Ascending pressure makes the trapezoid the same number without the minus sign.
+IVT_LEVELS_HPA = (300, 400, 500, 600, 700, 850, 925, 1000)
+G = 9.80665
+
+
+class FieldNotReady(RuntimeError):
+    """A level or the pressure field is not written yet. Do not stamp the frame."""
+
+
+def ivt_segment(flux0, flux1, p0_pa: float, p1_pa: float):
+    """One trapezoid step of ∫ qV dp / g between two pressure levels."""
+    return 0.5 * (flux0 + flux1) * (p1_pa - p0_pa) / G
+
+
+def stats_prefix(ens_prefix: str) -> str:
+    run = ens_prefix.strip("/").split("/")[-2]
+    return f"{PREFIX_ROOT}/{run}/predictions.zarr"
 
 
 def ens_prefixes() -> list[str]:
@@ -277,8 +297,193 @@ def _save_crop(
     dest.with_suffix(".init").write_text(start + "\n")
 
 
+def _member_level(ds: xr.Dataset, var: str, hour: int, level: int, members: int, box):
+    sl = ds[var].sel(lead_time=np.timedelta64(hour, "h"), level=level)
+    n = int(ds.sizes.get("sample", 64))
+    if members < n:
+        sl = sl.isel(sample=slice(0, members))
+    return crop25(sl, box)
+
+
+def _load_ivt(ds: xr.Dataset, hour: int, members: int, box):
+    """Column IVT on the wide grid, one level at a time. Color is the mean of the 64 magnitudes."""
+    if _WORKER_STATS is None:
+        raise FieldNotReady("stats pressure file is not open")
+    import dask
+
+    acc_u = acc_v = None
+    prev_qu = prev_qv = None
+    prev_p = None
+    lon = lat = None
+    for lev in IVT_LEVELS_HPA:
+        q = _member_level(ds, "specific_humidity", hour, lev, members, box)
+        u = _member_level(ds, "u_component_of_wind", hour, lev, members, box)
+        v = _member_level(ds, "v_component_of_wind", hour, lev, members, box)
+        with dask.config.set(scheduler="threads"):
+            q, u, v = dask.compute(q, u, v)
+        qa, ua, va = np.asarray(q), np.asarray(u), np.asarray(v)
+        if not (np.isfinite(qa).any() and np.isfinite(ua).any() and np.isfinite(va).any()):
+            raise FieldNotReady(f"level {lev} hPa is not written yet")
+        if lon is None:
+            lon = np.asarray(q.lon_0p25)
+            lat = np.asarray(q.lat_0p25)
+        qu = qa * ua
+        qv = qa * va
+        p = float(lev) * 100.0
+        if prev_qu is not None:
+            seg_u = ivt_segment(prev_qu, qu, prev_p, p)
+            seg_v = ivt_segment(prev_qv, qv, prev_p, p)
+            acc_u = seg_u if acc_u is None else acc_u + seg_u
+            acc_v = seg_v if acc_v is None else acc_v + seg_v
+        prev_qu, prev_qv, prev_p = qu, qv, p
+    if acc_u is None:
+        raise FieldNotReady("IVT column is empty")
+    try:
+        slp = _WORKER_STATS["mean_sea_level_pressure_mean"].sel(lead_time=np.timedelta64(hour, "h"))
+    except KeyError as exc:
+        raise FieldNotReady(f"no sea-level pressure at F+{hour}") from exc
+    lat0, lat1, lon0, lon1 = box
+    slp = slp.sel(
+        lat_0p1=slice(lat0 - 1.5, lat1 + 1.5),
+        lon_0p1=slice(lon0 - 1.5, lon1 + 1.5),
+    ).load()
+    if not np.isfinite(np.asarray(slp)).any():
+        raise FieldNotReady(f"sea-level pressure at F+{hour} is not written yet")
+    # High terrain makes raw sea-level pressure noisy. Smooth ~1°, then put it on the 0.25° grid.
+    slp_h = slp / 100.0
+    for _ in range(2):
+        slp_h = slp_h.rolling(lat_0p1=11, lon_0p1=11, center=True, min_periods=1).mean()
+    slp_on = slp_h.interp(
+        lat_0p1=xr.DataArray(lat, dims="lat_0p25"),
+        lon_0p1=xr.DataArray(lon, dims="lon_0p25"),
+    )
+    mag = np.hypot(acc_u, acc_v).mean(axis=0)
+    return {
+        "ivt": True,
+        "lon": lon,
+        "lat": lat,
+        "z": mag,
+        "ivt_u": acc_u.mean(axis=0),
+        "ivt_v": acc_v.mean(axis=0),
+        "contour_z": np.asarray(slp_on),
+        "contours": None,
+        "barbs": None,
+        "streamlines": None,
+        "marks": None,
+        "contour_color": "k",
+        "contour_label_color": None,
+        "title": "",
+        "pal": "ivt",
+    }
+
+
+def save_ivt_map(path: Path, lon, lat, mag, mu, mv, slp, start: str, hour: int) -> None:
+    """WeatherBell-style frame: IVT fill, transport streamlines, labeled 4 hPa contours."""
+    import matplotlib.colors as mcolors
+    import matplotlib.pyplot as plt
+
+    pal = cook.PALETTES["ivt"]
+    cmap = mcolors.ListedColormap(list(pal["colors"]))
+    cmap.set_over(pal["colors"][-1])
+    cmap.set_under("white")
+    norm = mcolors.BoundaryNorm(pal["bounds"], cmap.N)
+    lon0, lon1, lat0, lat1 = float(cook.LON0), float(cook.LON1), float(cook.LAT0), float(cook.LAT1)
+    fig = plt.figure(figsize=cook.FIG_SIZE, dpi=130)
+    ax = fig.add_axes([0.012, 0.09, 0.976, 0.84])
+    ax.set_autoscale_on(False)
+    ax.set_xlim(lon0, lon1)
+    ax.set_ylim(lat0, lat1)
+    ax.set_facecolor("#f4f7fd")
+    ax.contourf(lon, lat, mag, levels=pal["bounds"], cmap=cmap, norm=norm, extend="max", zorder=1)
+    step = max(2, int(round(len(lon) / 48)))
+    try:
+        ax.streamplot(
+            lon[::step], lat[::step],
+            np.nan_to_num(mu[::step, ::step]), np.nan_to_num(mv[::step, ::step]),
+            density=(2.2, 1.6), color="0.45", linewidth=0.45, arrowsize=0.55, arrowstyle="-|>",
+            zorder=2,
+        )
+    except Exception as exc:
+        print(f"ivt streamlines skipped: {exc}", flush=True)
+    cook.add_boundaries(ax)
+    span = max(lon1 - lon0, lat1 - lat0)
+    grid = 10.0 if span > 50 else 5.0
+    for x in np.arange(np.ceil(lon0 / grid) * grid, lon1, grid):
+        ax.axvline(x, color="0.55", lw=0.4, ls=(0, (3, 4)), zorder=3)
+        west = x > 180
+        lon_txt = f"{int(round(360 - x if west else x))} {'W' if west else 'E'}"
+        ax.text(x, lat1, lon_txt, ha="center", va="top", fontsize=7, zorder=6, clip_on=True)
+    for y in np.arange(np.ceil(lat0 / grid) * grid, lat1, grid):
+        ax.axhline(y, color="0.55", lw=0.4, ls=(0, (3, 4)), zorder=3)
+        ax.text(lon1, y, f"{int(round(y))} N", ha="right", va="bottom", fontsize=7, zorder=6,
+                clip_on=True)
+    cs = ax.contour(lon, lat, slp, levels=np.arange(940, 1072, 4), colors="k", linewidths=0.7, zorder=4)
+    ax.clabel(cs, fmt="%d", fontsize=7, inline=True, inline_spacing=3)
+    for x, y, kind, val in slp_marks(lon, lat, slp):
+        color = "#1a4fd6" if kind == "H" else "#d01010"
+        ax.text(x, y, kind, color=color, fontsize=11, fontweight="bold", ha="center", va="center", zorder=7)
+        ax.text(x, y - 0.6, f"{val:.0f}", color=color, fontsize=7, ha="center", va="top", zorder=7)
+    ax.set_autoscale_on(False)
+    ax.set_xlim(lon0, lon1)
+    ax.set_ylim(lat0, lat1)
+    ax.set_xticks([])
+    ax.set_yticks([])
+    for spine in ax.spines.values():
+        spine.set_linewidth(0.6)
+    ax.text(0.012, 0.012, "AI-Weather-Guy", transform=ax.transAxes, fontsize=9, fontweight="bold",
+            color="0.45", style="italic", zorder=8)
+    init = datetime.fromisoformat(start.replace("Z", "+00:00"))
+    valid = init + timedelta(hours=hour)
+    fig.text(
+        0.012, 0.965,
+        f"WN3 0.25° 64-mem mean • Init {init:%H}z {init.day} {init:%b %Y} • "
+        "Integrated Vapor Transport (kg m$^{-1}$ s$^{-1}$) and MSLP (hPa)",
+        fontsize=9, va="center",
+    )
+    fig.text(
+        0.988, 0.965,
+        f"Hour: {hour} • Valid: {valid:%H}z {valid:%a} {valid.day} {valid:%b %Y}",
+        fontsize=9, fontweight="bold", ha="right", va="center",
+    )
+    cax = fig.add_axes([0.02, 0.028, 0.62, 0.018])
+    cb = fig.colorbar(
+        plt.cm.ScalarMappable(norm=norm, cmap=cmap), cax=cax, orientation="horizontal",
+        ticks=pal["bounds"], extend="max",
+    )
+    cb.ax.xaxis.set_ticks_position("top")
+    cb.ax.tick_params(labelsize=6, length=0, pad=1)
+    cb.outline.set_linewidth(0.5)
+    finite = mag[np.isfinite(mag)]
+    if finite.size:
+        fig.text(0.985, 0.034, f"Max: {finite.max():.1f}", fontsize=10, fontweight="bold",
+                 ha="right", va="center")
+    tmp = cook.staged_path(path.name)
+    fig.savefig(tmp, facecolor="white", dpi=130)
+    plt.close(fig)
+    try:
+        cook.publish_file(tmp, path)
+    finally:
+        tmp.unlink(missing_ok=True)
+
+
+def _save_ivt_crop(name: str, dest: Path, start: str, hour: int, lon, lat, mag, mu, mv, slp) -> None:
+    reg = cook.DOMAINS[name]
+    plon, plat, pmag, pmu, pmv, pslp = cook.subset_box(lon, lat, [mag, mu, mv, slp], (*reg["lat"], *reg["lon"]))
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    cook.apply_domain(name)
+    try:
+        save_ivt_map(dest, plon, plat, pmag, pmu, pmv, pslp, start, hour)
+    finally:
+        cook.apply_domain("wide")
+    if dest.stat().st_size < 1000:
+        raise RuntimeError(f"tiny PNG {dest}")
+    dest.with_suffix(".init").write_text(start + "\n")
+
+
 def _load_field(ds: xr.Dataset, start: str, hour: int, fid: str, members: int, box):
     """Read one wide-domain field. box is captured by the caller so a crop cannot change it."""
+    if fid == "ivt":
+        return _load_ivt(ds, hour, members, box)
     spec = FIELDS[fid]
     label, pal = spec[1], spec[4]
     valid_dt = datetime.fromisoformat(start.replace("Z", "+00:00")) + timedelta(hours=hour)
@@ -376,6 +581,20 @@ def plot_one(
     title = loaded["title"]
     pal = loaded["pal"]
     dest.parent.mkdir(parents=True, exist_ok=True)
+    if loaded.get("ivt"):
+        if need_wide:
+            save_ivt_map(
+                dest, lon, lat, z, loaded["ivt_u"], loaded["ivt_v"], contour_z, start, hour,
+            )
+            if dest.stat().st_size < 1000:
+                raise RuntimeError(f"tiny PNG {dest}")
+            dest.with_suffix(".init").write_text(start + "\n")
+        for name, crop_dest in need:
+            _save_ivt_crop(
+                name, crop_dest, start, hour, lon, lat, z,
+                loaded["ivt_u"], loaded["ivt_v"], contour_z,
+            )
+        return f"ok {fid} f{hour:03d}"
     if need_wide:
         save_map(
             dest,
@@ -526,8 +745,13 @@ def _crop_outs(args: argparse.Namespace) -> list[tuple[str, Path]]:
 
 
 def _ens_worker_init(project_id: str, prefix: str) -> None:
-    global _WORKER_DS
+    global _WORKER_DS, _WORKER_STATS
     _WORKER_DS = open_ens(prefix, project_id)
+    try:
+        _WORKER_STATS = open_stats(stats_prefix(prefix), project_id)
+    except Exception as exc:
+        _WORKER_STATS = None
+        print(f"ivt: stats file not open ({exc})", flush=True)
     for name in cook.DOMAINS:
         cook.warm_boundaries(name)
 
@@ -536,7 +760,10 @@ def _ens_worker_draw(job: tuple) -> str:
     hour, fid, dest, members, force, crops, init, box = job
     if _WORKER_DS is None:
         raise RuntimeError("ensemble worker has no dataset")
-    loaded = _load_field(_WORKER_DS, init, hour, fid, members, box)
+    try:
+        loaded = _load_field(_WORKER_DS, init, hour, fid, members, box)
+    except FieldNotReady as exc:
+        return f"skip {fid} f{hour:03d}: {exc}"
     crop_args = [(name, Path(path), flag) for name, path, flag in crops]
     return plot_one(
         _WORKER_DS, init, hour, fid, Path(dest), members, force, crop_args, loaded
@@ -570,6 +797,19 @@ def _self_check() -> None:
     got = _parallel_map(_add_one, [1, 2, 3, 4, 5], DRAW_WORKERS)
     assert sorted(got) == [2, 3, 4, 5, 6], got
     assert 2 <= DRAW_WORKERS <= (os.cpu_count() or 2), DRAW_WORKERS
+    # Constant 10 g/kg and 10 m/s from 1000 to 300 hPa is 713.8 kg m-1 s-1.
+    qu = np.full(2, 0.1)
+    one = ivt_segment(qu[0], qu[1], 30000.0, 100000.0)
+    assert abs(float(one) - 7000.0 / G) < 1e-6, one
+    parts = (
+        ivt_segment(0.1, 0.1, 30000.0, 70000.0)
+        + ivt_segment(0.1, 0.1, 70000.0, 100000.0)
+    )
+    assert abs(float(parts) - float(one)) < 1e-6, parts
+    assert stats_prefix(
+        "weathernext_3_0_0/zarr/2026_to_present/20261014_18hr_01_preds/predictions.zarr"
+    ).endswith("20261014_18hr_01_preds/predictions.zarr")
+    assert ENSEMBLE_IDS[0] == "ivt"
     print("ensemble parallel ok", DRAW_WORKERS)
 
 

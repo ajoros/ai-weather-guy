@@ -590,6 +590,19 @@ PALETTES: dict[str, dict] = {
         "ticks": np.arange(0, 101, 20),
         "bad": "#ffffff",
     },
+    # IVT kg m-1 s-1. Below 250 stays blank (the first bound); the drawer sets under to white.
+    "ivt": {
+        "colors": [
+            "#0b1fe0", "#1449f5", "#1f7bff", "#22b2ff", "#25e2f2", "#26eab8", "#1fd877",
+            "#14c043", "#37c41e", "#93da1d", "#e2f01f", "#ffd900", "#ffb000", "#ff8200",
+            "#ff4a00", "#ee1a1a", "#cf0f3f", "#ae0f70", "#88148f", "#641d97",
+        ],
+        "bounds": np.arange(250.0, 1251.0, 50.0),
+        "label": "kg/m/s",
+        "ticks": np.arange(250, 1251, 50),
+        "bad": "#ffffff",
+        "extend": "max",
+    },
 }
 
 
@@ -629,6 +642,7 @@ FIELD_ROWS = [
     ("rh850", "850 mb relative humidity", "specific_humidity", specific_humidity_to_rh, "rh_pct", "0p25", 0),
     ("rh700", "700 mb relative humidity", "specific_humidity", specific_humidity_to_rh, "rh_pct", "0p25", 0),
     ("rh500", "500 mb relative humidity", "specific_humidity", specific_humidity_to_rh, "rh_pct", "0p25", 0),
+    ("ivt", "Integrated vapor transport", "specific_humidity", None, "ivt", "0p25", 0),
     ("sst", "Sea-surface temperature", "sea_surface_temperature_mean", k_to_f, "tmp_f", "0p1", 0),
     ("cloud_total", "Total cloud cover", "total_cloud_cover_mean", frac_to_pct, "cloud", "0p1", 0),
     ("cloud_low", "Low cloud cover", "low_cloud_cover_mean", frac_to_pct, "cloud", "0p1", 0),
@@ -638,6 +652,7 @@ FIELD_ROWS = [
 FIELDS = {row[0]: row for row in FIELD_ROWS}
 CORE_IDS = ["station_t", "dt24", "qpf1_imerg", "qpf_acc", "slp", "wind10", "wind10_p90"]
 ENSEMBLE_IDS = [
+    "ivt",
     "h500",
     "t850",
     "wind925",
