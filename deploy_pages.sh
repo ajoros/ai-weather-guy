@@ -37,6 +37,13 @@ WORK="${HOME}/Library/Application Support/ai-weather-guy/gh-pages"
 mkdir -p "$(dirname "$WORK")"
 trap 'rm -rf "$DEPLOCK"' EXIT
 
+# The checkout's .git filled the 40 GB disk. Drop it and clone one commit.
+avail=$(df -Pk / | awk 'NR==2 {print $4}')
+if [ "${avail:-0}" -lt 2000000 ] && [ -d "$WORK/.git" ]; then
+  echo "disk low (${avail}K free); dropping the standing publish checkout" >&2
+  rm -rf "$WORK"
+fi
+
 test -f "$SITE/index.html"
 if [ ! -d "$WORK/.git" ]; then
   rm -rf "$WORK"
@@ -73,7 +80,11 @@ EXPECTED=""
 if git -C "$WORK" rev-parse --verify HEAD >/dev/null 2>&1; then
   EXPECTED=$(git -C "$WORK" rev-parse HEAD)
 fi
-COMMIT=$(git -C "$WORK" commit-tree "$TREE" -m "Publish WeatherNext 3 maps for github.io")
+COMMIT=$(git -C "$WORK" commit-tree "$TREE" -m "Publish WeatherNext 3 maps for github.io") || exit 1
+if [ -z "$COMMIT" ]; then
+  echo "publish commit was not created" >&2
+  exit 1
+fi
 if [ -n "$EXPECTED" ]; then
   git -C "$WORK" push --force-with-lease=refs/heads/gh-pages:"$EXPECTED" origin "$COMMIT":refs/heads/gh-pages
 else
