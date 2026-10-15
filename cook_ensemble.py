@@ -480,10 +480,168 @@ def _save_ivt_crop(name: str, dest: Path, start: str, hour: int, lon, lat, mag, 
     dest.with_suffix(".init").write_text(start + "\n")
 
 
+def _load_pcp6(ds: xr.Dataset, hour: int, members: int, box):
+    """6-hour precip on the 0.1° stats grid, plus smoothed MSLP and 850 mb temperature."""
+    if _WORKER_STATS is None:
+        raise FieldNotReady("stats pressure file is not open")
+    import dask
+
+    lat0, lat1, lon0, lon1 = box
+    pad = dict(
+        lat_0p1=slice(lat0 - 1.5, lat1 + 1.5),
+        lon_0p1=slice(lon0 - 1.5, lon1 + 1.5),
+    )
+    hours = list(range(hour - 5, hour + 1))
+    try:
+        rain = _WORKER_STATS["total_precipitation_1hr_mean"].sel(
+            lead_time=[np.timedelta64(h, "h") for h in hours]
+        ).sel(**pad)
+        slp = _WORKER_STATS["mean_sea_level_pressure_mean"].sel(
+            lead_time=np.timedelta64(hour, "h")
+        ).sel(**pad)
+    except KeyError as exc:
+        raise FieldNotReady(f"6-h precip at F+{hour} is not in the stats file") from exc
+    t850 = mean_level(ds, "temperature", hour, 850, members, (lat0 - 1.0, lat1 + 1.0, lon0 - 1.0, lon1 + 1.0))
+    with dask.config.set(scheduler="threads"):
+        rain, slp = dask.compute(rain, slp)
+    rain_a = np.asarray(rain)
+    if rain_a.shape[0] != 6 or not all(np.isfinite(rain_a[i]).any() for i in range(6)):
+        raise FieldNotReady(f"6-h precip at F+{hour} is not written yet")
+    if not np.isfinite(np.asarray(slp)).any():
+        raise FieldNotReady(f"sea-level pressure at F+{hour} is not written yet")
+    if not np.isfinite(np.asarray(t850)).any():
+        raise FieldNotReady(f"850 mb temperature at F+{hour} is not written yet")
+    # High terrain makes raw sea-level pressure noisy. Smooth ~1°, then coarsen.
+    slp_h = slp / 100.0
+    for _ in range(2):
+        slp_h = slp_h.rolling(lat_0p1=11, lon_0p1=11, center=True, min_periods=1).mean()
+    slp_c = slp_h.coarsen(lat_0p1=3, lon_0p1=3, boundary="trim").mean()
+    return {
+        "pcp6": True,
+        "lon": np.asarray(rain.lon_0p1),
+        "lat": np.asarray(rain.lat_0p1),
+        "z": cook.m_to_in(rain_a.sum(axis=0)),
+        "slp_lon": np.asarray(slp_c.lon_0p1),
+        "slp_lat": np.asarray(slp_c.lat_0p1),
+        "slp": np.asarray(slp_c),
+        "t_lon": np.asarray(t850.lon_0p25),
+        "t_lat": np.asarray(t850.lat_0p25),
+        "t850": np.asarray(t850) - 273.15,
+        "contour_z": None,
+        "contours": None,
+        "barbs": None,
+        "streamlines": None,
+        "marks": None,
+        "contour_color": "k",
+        "contour_label_color": None,
+        "title": "",
+        "pal": "pcp6",
+    }
+
+
+def save_pcp6_map(path, rlon, rlat, qpf, slon, slat, slp, tlon, tlat, t850, start: str, hour: int) -> None:
+    """Precip fill, black MSLP contours, red 850 mb temperature contours."""
+    import matplotlib.colors as mcolors
+    import matplotlib.pyplot as plt
+
+    pal = cook.PALETTES["pcp6"]
+    cmap = mcolors.ListedColormap(list(pal["colors"]))
+    cmap.set_over(pal["colors"][-1])
+    cmap.set_under("white")
+    norm = mcolors.BoundaryNorm(pal["bounds"], cmap.N)
+    lon0, lon1, lat0, lat1 = float(cook.LON0), float(cook.LON1), float(cook.LAT0), float(cook.LAT1)
+    fig = plt.figure(figsize=cook.FIG_SIZE, dpi=130)
+    ax = fig.add_axes([0.012, 0.09, 0.976, 0.84])
+    ax.set_autoscale_on(False)
+    ax.set_xlim(lon0, lon1)
+    ax.set_ylim(lat0, lat1)
+    ax.set_facecolor("white")
+    ax.contourf(rlon, rlat, qpf, levels=pal["bounds"], cmap=cmap, norm=norm, extend="max", zorder=1)
+    cook.add_boundaries(ax)
+    span = max(lon1 - lon0, lat1 - lat0)
+    grid = 10.0 if span > 50 else 5.0
+    for x in np.arange(np.ceil(lon0 / grid) * grid, lon1, grid):
+        ax.axvline(x, color="0.75", lw=0.4, zorder=2)
+        west = x > 180
+        lon_txt = f"{int(round(360 - x if west else x))} {'W' if west else 'E'}"
+        ax.text(x, lat1, lon_txt, ha="center", va="top", fontsize=7, color="0.35", zorder=6, clip_on=True)
+    for y in np.arange(np.ceil(lat0 / grid) * grid, lat1, grid):
+        ax.axhline(y, color="0.75", lw=0.4, zorder=2)
+        ax.text(lon1, y, f"{int(round(y))} N", ha="right", va="bottom", fontsize=7, color="0.35",
+                zorder=6, clip_on=True)
+    cs = ax.contour(slon, slat, slp, levels=np.arange(960, 1060, 4), colors="k", linewidths=0.8, zorder=4)
+    ax.clabel(cs, fmt="%d", fontsize=7, inline=True, inline_spacing=3)
+    ct = ax.contour(tlon, tlat, t850, levels=np.arange(-30, 37, 3), colors="#d94a38", linewidths=0.7, zorder=5)
+    ax.clabel(ct, fmt="%d", fontsize=7, inline=True, inline_spacing=2)
+    ax.set_autoscale_on(False)
+    ax.set_xlim(lon0, lon1)
+    ax.set_ylim(lat0, lat1)
+    ax.set_xticks([])
+    ax.set_yticks([])
+    for spine in ax.spines.values():
+        spine.set_linewidth(0.6)
+    ax.text(0.012, 0.012, "AI-Weather-Guy", transform=ax.transAxes, fontsize=9, fontweight="bold",
+            color="0.45", style="italic", zorder=8)
+    init = datetime.fromisoformat(start.replace("Z", "+00:00"))
+    valid = init + timedelta(hours=hour)
+    fig.text(
+        0.012, 0.965,
+        f"WN3 64-mem mean • Init {init:%H}z {init.day} {init:%b %Y} • "
+        "6-h Precip (in.), MSLP (hPa), 850 mb Temp (°C)",
+        fontsize=9, va="center",
+    )
+    fig.text(
+        0.988, 0.965,
+        f"Hour: {hour} • Valid: {valid:%H}z {valid:%a} {valid.day} {valid:%b %Y}",
+        fontsize=9, fontweight="bold", ha="right", va="center",
+    )
+    cax = fig.add_axes([0.02, 0.028, 0.70, 0.018])
+    cb = fig.colorbar(
+        plt.cm.ScalarMappable(norm=norm, cmap=cmap), cax=cax, orientation="horizontal",
+        ticks=pal["ticks"], extend="max",
+    )
+    cb.ax.set_xticklabels([f"{v:g}" for v in pal["ticks"]])
+    cb.ax.xaxis.set_ticks_position("top")
+    cb.ax.tick_params(labelsize=6, length=0, pad=1)
+    cb.outline.set_linewidth(0.5)
+    inside = np.ix_((rlat >= lat0) & (rlat <= lat1), (rlon >= lon0) & (rlon <= lon1))
+    finite = qpf[inside]
+    finite = finite[np.isfinite(finite)]
+    if finite.size:
+        fig.text(0.985, 0.034, f"Max: {finite.max():.2f}", fontsize=10, fontweight="bold",
+                 ha="right", va="center")
+    tmp = cook.staged_path(path.name)
+    fig.savefig(tmp, facecolor="white", dpi=130)
+    plt.close(fig)
+    try:
+        cook.publish_file(tmp, path)
+    finally:
+        tmp.unlink(missing_ok=True)
+
+
+def _save_pcp6_crop(name, dest, start, hour, rlon, rlat, qpf, slon, slat, slp, tlon, tlat, t850) -> None:
+    reg = cook.DOMAINS[name]
+    box = (*reg["lat"], *reg["lon"])
+    plon, plat, pqpf = cook.subset_box(rlon, rlat, [qpf], box)
+    pslon, pslat, pslp = cook.subset_box(slon, slat, [slp], box)
+    ptlon, ptlat, pt = cook.subset_box(tlon, tlat, [t850], box)
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    cook.apply_domain(name)
+    try:
+        save_pcp6_map(dest, plon, plat, pqpf, pslon, pslat, pslp, ptlon, ptlat, pt, start, hour)
+    finally:
+        cook.apply_domain("wide")
+    if dest.stat().st_size < 1000:
+        raise RuntimeError(f"tiny PNG {dest}")
+    dest.with_suffix(".init").write_text(start + "\n")
+
+
 def _load_field(ds: xr.Dataset, start: str, hour: int, fid: str, members: int, box):
     """Read one wide-domain field. box is captured by the caller so a crop cannot change it."""
     if fid == "ivt":
         return _load_ivt(ds, hour, members, box)
+    if fid == "pcp6":
+        return _load_pcp6(ds, hour, members, box)
     spec = FIELDS[fid]
     label, pal = spec[1], spec[4]
     valid_dt = datetime.fromisoformat(start.replace("Z", "+00:00")) + timedelta(hours=hour)
@@ -593,6 +751,22 @@ def plot_one(
             _save_ivt_crop(
                 name, crop_dest, start, hour, lon, lat, z,
                 loaded["ivt_u"], loaded["ivt_v"], contour_z,
+            )
+        return f"ok {fid} f{hour:03d}"
+    if loaded.get("pcp6"):
+        if need_wide:
+            save_pcp6_map(
+                dest, lon, lat, z, loaded["slp_lon"], loaded["slp_lat"], loaded["slp"],
+                loaded["t_lon"], loaded["t_lat"], loaded["t850"], start, hour,
+            )
+            if dest.stat().st_size < 1000:
+                raise RuntimeError(f"tiny PNG {dest}")
+            dest.with_suffix(".init").write_text(start + "\n")
+        for name, crop_dest in need:
+            _save_pcp6_crop(
+                name, crop_dest, start, hour, lon, lat, z,
+                loaded["slp_lon"], loaded["slp_lat"], loaded["slp"],
+                loaded["t_lon"], loaded["t_lat"], loaded["t850"],
             )
         return f"ok {fid} f{hour:03d}"
     if need_wide:
@@ -810,6 +984,9 @@ def _self_check() -> None:
         "weathernext_3_0_0/zarr/2026_to_present/20261014_18hr_01_preds/predictions.zarr"
     ).endswith("20261014_18hr_01_preds/predictions.zarr")
     assert ENSEMBLE_IDS[0] == "ivt"
+    assert ENSEMBLE_IDS[1] == "pcp6"
+    pcp = cook.PALETTES["pcp6"]["bounds"]
+    assert (pcp[6], pcp[7], pcp[8], pcp[10]) == (0.5, 0.7, 0.9, 1.4)
     print("ensemble parallel ok", DRAW_WORKERS)
 
 

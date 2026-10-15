@@ -21,6 +21,7 @@ RUN_LABELS = {
     "wind10": "10 m wind",
     "wind10_p90": "10 m gust",
     "ivt": "IVT",
+    "pcp6": "6h QPF",
     "h500": "500H",
     "t850": "850T",
     "wind925": "925 wind",

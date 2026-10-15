@@ -603,6 +603,25 @@ PALETTES: dict[str, dict] = {
         "bad": "#ffffff",
         "extend": "max",
     },
+    # 6-h precip inches. Each color ends at the next bound. Under 0.01 stays blank.
+    "pcp6": {
+        "colors": [
+            "#ffffff", "#aba5a5", "#6e6e6e", "#97f58d", "#51f051", "#109d11", "#2d7dee",
+            "#9dd2fb", "#fffbab", "#ffc03d", "#ff6100", "#e41800", "#a30001", "#673f35",
+            "#b38d82", "#f3dad3", "#aca0c6", "#715ea0", "#770178", "#ae00ac", "#d700d9",
+        ],
+        "bounds": np.array([
+            0.01, 0.03, 0.05, 0.1, 0.2, 0.3, 0.5, 0.7, 0.9, 1.1, 1.4, 1.8, 2.5, 3, 4, 6,
+            8, 10, 12, 14, 18, 25.0,
+        ]),
+        "label": "in",
+        "ticks": np.array([
+            0.01, 0.03, 0.05, 0.1, 0.2, 0.3, 0.5, 0.7, 0.9, 1.1, 1.4, 1.8, 2.5, 3, 4, 6,
+            8, 10, 12, 14, 18,
+        ]),
+        "bad": "#ffffff",
+        "extend": "max",
+    },
 }
 
 
@@ -643,6 +662,7 @@ FIELD_ROWS = [
     ("rh700", "700 mb relative humidity", "specific_humidity", specific_humidity_to_rh, "rh_pct", "0p25", 0),
     ("rh500", "500 mb relative humidity", "specific_humidity", specific_humidity_to_rh, "rh_pct", "0p25", 0),
     ("ivt", "Integrated vapor transport", "specific_humidity", None, "ivt", "0p25", 0),
+    ("pcp6", "6-h precip, MSLP, and 850 mb temperature", "total_precipitation_1hr_mean", m_to_in, "pcp6", "0p1", 6),
     ("sst", "Sea-surface temperature", "sea_surface_temperature_mean", k_to_f, "tmp_f", "0p1", 0),
     ("cloud_total", "Total cloud cover", "total_cloud_cover_mean", frac_to_pct, "cloud", "0p1", 0),
     ("cloud_low", "Low cloud cover", "low_cloud_cover_mean", frac_to_pct, "cloud", "0p1", 0),
@@ -653,6 +673,7 @@ FIELDS = {row[0]: row for row in FIELD_ROWS}
 CORE_IDS = ["station_t", "dt24", "qpf1_imerg", "qpf_acc", "slp", "wind10", "wind10_p90"]
 ENSEMBLE_IDS = [
     "ivt",
+    "pcp6",
     "h500",
     "t850",
     "wind925",

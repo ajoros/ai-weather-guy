@@ -81,6 +81,11 @@ def main() -> None:
     assert FIELDS["wind300"][4] == FIELDS["wind925"][4] == FIELDS["wind700"][4] == FIELDS["wind500"][4] == "wind_kt"
     assert cook.RH_LEVEL == {"rh925": 925, "rh850": 850, "rh700": 700, "rh500": 500}
     assert ENSEMBLE_IDS[0] == "ivt"
+    assert ENSEMBLE_IDS[1] == "pcp6"
+    assert cook.PALETTES["pcp6"]["bounds"][6] == 0.5
+    assert cook.PALETTES["pcp6"]["bounds"][7] == 0.7
+    assert cook.PALETTES["pcp6"]["bounds"][8] == 0.9
+    assert cook.PALETTES["pcp6"]["bounds"][10] == 1.4
     assert [i for i in ENSEMBLE_IDS if i.startswith("rh")] == list(cook.RH_LEVEL)
     assert all(FIELDS[i][4] == "rh_pct" for i in cook.RH_LEVEL)
     assert ensemble_floor_lead(1) == 6
