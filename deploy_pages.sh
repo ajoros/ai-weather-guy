@@ -1,6 +1,9 @@
 #!/bin/sh
 # Publish site/ onto the existing gh-pages branch.
 # Wide maps stay as already published when site/manifest.json is an empty placeholder.
+# Each publish is a new root commit. Stacking image history on gh-pages filled the
+# GitHub quota. The push updates only refs/heads/gh-pages. GitHub keeps the old
+# objects until it garbage-collects them.
 set -e
 ROOT="$(CDPATH= cd -- "$(dirname "$0")" && pwd)"
 SITE="$ROOT/site"
@@ -62,10 +65,18 @@ if git -C "$WORK" diff --cached --quiet; then
   echo "nothing to publish" >&2
   exit 0
 fi
-git -C "$WORK" commit -qm "Publish WeatherNext 3 maps for github.io"
 if ! git -C "$WORK" remote get-url origin >/dev/null 2>&1; then
   git -C "$WORK" remote add origin "$ORIGIN"
-  git -C "$WORK" branch -M gh-pages
 fi
-git -C "$WORK" push origin HEAD:gh-pages
+TREE=$(git -C "$WORK" write-tree)
+EXPECTED=""
+if git -C "$WORK" rev-parse --verify HEAD >/dev/null 2>&1; then
+  EXPECTED=$(git -C "$WORK" rev-parse HEAD)
+fi
+COMMIT=$(git -C "$WORK" commit-tree "$TREE" -m "Publish WeatherNext 3 maps for github.io")
+if [ -n "$EXPECTED" ]; then
+  git -C "$WORK" push --force-with-lease=refs/heads/gh-pages:"$EXPECTED" origin "$COMMIT":refs/heads/gh-pages
+else
+  git -C "$WORK" push origin "$COMMIT":refs/heads/gh-pages
+fi
 echo "done." >&2
