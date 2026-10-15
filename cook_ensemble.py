@@ -376,6 +376,22 @@ def _load_ivt(ds: xr.Dataset, hour: int, members: int, box):
     }
 
 
+def _right_colorbar(fig, ax, norm, cmap, ticks, label, labels=None):
+    """Same strip as cook.finish_map: thin, vertical, on the right."""
+    import matplotlib.pyplot as plt
+
+    cb = fig.colorbar(
+        plt.cm.ScalarMappable(norm=norm, cmap=cmap),
+        ax=ax, fraction=0.022, pad=0.008, shrink=0.86, aspect=24,
+        ticks=ticks, extend="max",
+    )
+    if labels is not None:
+        cb.ax.set_yticklabels(labels)
+    cb.ax.tick_params(labelsize=9)
+    cb.set_label(label, fontsize=11)
+    return cb
+
+
 def save_ivt_map(path: Path, lon, lat, mag, mu, mv, slp, start: str, hour: int) -> None:
     """WeatherBell-style frame: IVT fill, transport streamlines, labeled 4 hPa contours."""
     import matplotlib.colors as mcolors
@@ -387,8 +403,8 @@ def save_ivt_map(path: Path, lon, lat, mag, mu, mv, slp, start: str, hour: int) 
     cmap.set_under("white")
     norm = mcolors.BoundaryNorm(pal["bounds"], cmap.N)
     lon0, lon1, lat0, lat1 = float(cook.LON0), float(cook.LON1), float(cook.LAT0), float(cook.LAT1)
-    fig = plt.figure(figsize=cook.FIG_SIZE, dpi=130)
-    ax = fig.add_axes([0.012, 0.09, 0.976, 0.84])
+    fig, ax = plt.subplots(figsize=cook.FIG_SIZE, dpi=130)
+    fig.subplots_adjust(left=0.015, right=0.98, top=0.91, bottom=0.03)
     ax.set_autoscale_on(False)
     ax.set_xlim(lon0, lon1)
     ax.set_ylim(lat0, lat1)
@@ -411,17 +427,17 @@ def save_ivt_map(path: Path, lon, lat, mag, mu, mv, slp, start: str, hour: int) 
         ax.axvline(x, color="0.55", lw=0.4, ls=(0, (3, 4)), zorder=3)
         west = x > 180
         lon_txt = f"{int(round(360 - x if west else x))} {'W' if west else 'E'}"
-        ax.text(x, lat1, lon_txt, ha="center", va="top", fontsize=7, zorder=6, clip_on=True)
+        ax.text(x, lat1, lon_txt, ha="center", va="top", fontsize=9, zorder=6, clip_on=True)
     for y in np.arange(np.ceil(lat0 / grid) * grid, lat1, grid):
         ax.axhline(y, color="0.55", lw=0.4, ls=(0, (3, 4)), zorder=3)
-        ax.text(lon1, y, f"{int(round(y))} N", ha="right", va="bottom", fontsize=7, zorder=6,
+        ax.text(lon1, y, f"{int(round(y))} N", ha="right", va="bottom", fontsize=9, zorder=6,
                 clip_on=True)
     cs = ax.contour(lon, lat, slp, levels=np.arange(940, 1072, 4), colors="k", linewidths=0.7, zorder=4)
-    ax.clabel(cs, fmt="%d", fontsize=7, inline=True, inline_spacing=3)
+    ax.clabel(cs, fmt="%d", fontsize=9, inline=True, inline_spacing=3)
     for x, y, kind, val in slp_marks(lon, lat, slp):
         color = "#1a4fd6" if kind == "H" else "#d01010"
-        ax.text(x, y, kind, color=color, fontsize=11, fontweight="bold", ha="center", va="center", zorder=7)
-        ax.text(x, y - 0.6, f"{val:.0f}", color=color, fontsize=7, ha="center", va="top", zorder=7)
+        ax.text(x, y, kind, color=color, fontsize=13, fontweight="bold", ha="center", va="center", zorder=7)
+        ax.text(x, y - 0.8, f"{val:.0f}", color=color, fontsize=9, ha="center", va="top", zorder=7)
     ax.set_autoscale_on(False)
     ax.set_xlim(lon0, lon1)
     ax.set_ylim(lat0, lat1)
@@ -429,7 +445,7 @@ def save_ivt_map(path: Path, lon, lat, mag, mu, mv, slp, start: str, hour: int) 
     ax.set_yticks([])
     for spine in ax.spines.values():
         spine.set_linewidth(0.6)
-    ax.text(0.012, 0.012, "AI-Weather-Guy", transform=ax.transAxes, fontsize=9, fontweight="bold",
+    ax.text(0.012, 0.012, "AI-Weather-Guy", transform=ax.transAxes, fontsize=11, fontweight="bold",
             color="0.45", style="italic", zorder=8)
     init = datetime.fromisoformat(start.replace("Z", "+00:00"))
     valid = init + timedelta(hours=hour)
@@ -437,25 +453,21 @@ def save_ivt_map(path: Path, lon, lat, mag, mu, mv, slp, start: str, hour: int) 
         0.012, 0.965,
         f"WN3 0.25° 64-mem mean • Init {init:%H}z {init.day} {init:%b %Y} • "
         "Integrated Vapor Transport (kg m$^{-1}$ s$^{-1}$) and MSLP (hPa)",
-        fontsize=9, va="center",
+        fontsize=11, va="center",
     )
     fig.text(
         0.988, 0.965,
         f"Hour: {hour} • Valid: {valid:%H}z {valid:%a} {valid.day} {valid:%b %Y}",
-        fontsize=9, fontweight="bold", ha="right", va="center",
+        fontsize=11, fontweight="bold", ha="right", va="center",
     )
-    cax = fig.add_axes([0.02, 0.028, 0.62, 0.018])
-    cb = fig.colorbar(
-        plt.cm.ScalarMappable(norm=norm, cmap=cmap), cax=cax, orientation="horizontal",
-        ticks=pal["bounds"], extend="max",
-    )
-    cb.ax.xaxis.set_ticks_position("top")
-    cb.ax.tick_params(labelsize=6, length=0, pad=1)
-    cb.outline.set_linewidth(0.5)
     finite = mag[np.isfinite(mag)]
+    _right_colorbar(fig, ax, norm, cmap, pal["bounds"], pal["label"])
+    ax.set_autoscale_on(False)
+    ax.set_xlim(lon0, lon1)
+    ax.set_ylim(lat0, lat1)
     if finite.size:
-        fig.text(0.985, 0.034, f"Max: {finite.max():.1f}", fontsize=10, fontweight="bold",
-                 ha="right", va="center")
+        fig.text(0.985, 0.012, f"Max: {finite.max():.1f}", fontsize=12, fontweight="bold",
+                 ha="right", va="bottom")
     tmp = cook.staged_path(path.name)
     fig.savefig(tmp, facecolor="white", dpi=130)
     plt.close(fig)
@@ -549,8 +561,8 @@ def save_pcp6_map(path, rlon, rlat, qpf, slon, slat, slp, tlon, tlat, t850, star
     cmap.set_under("white")
     norm = mcolors.BoundaryNorm(pal["bounds"], cmap.N)
     lon0, lon1, lat0, lat1 = float(cook.LON0), float(cook.LON1), float(cook.LAT0), float(cook.LAT1)
-    fig = plt.figure(figsize=cook.FIG_SIZE, dpi=130)
-    ax = fig.add_axes([0.012, 0.09, 0.976, 0.84])
+    fig, ax = plt.subplots(figsize=cook.FIG_SIZE, dpi=130)
+    fig.subplots_adjust(left=0.015, right=0.98, top=0.91, bottom=0.03)
     ax.set_autoscale_on(False)
     ax.set_xlim(lon0, lon1)
     ax.set_ylim(lat0, lat1)
@@ -563,15 +575,15 @@ def save_pcp6_map(path, rlon, rlat, qpf, slon, slat, slp, tlon, tlat, t850, star
         ax.axvline(x, color="0.75", lw=0.4, zorder=2)
         west = x > 180
         lon_txt = f"{int(round(360 - x if west else x))} {'W' if west else 'E'}"
-        ax.text(x, lat1, lon_txt, ha="center", va="top", fontsize=7, color="0.35", zorder=6, clip_on=True)
+        ax.text(x, lat1, lon_txt, ha="center", va="top", fontsize=9, color="0.35", zorder=6, clip_on=True)
     for y in np.arange(np.ceil(lat0 / grid) * grid, lat1, grid):
         ax.axhline(y, color="0.75", lw=0.4, zorder=2)
-        ax.text(lon1, y, f"{int(round(y))} N", ha="right", va="bottom", fontsize=7, color="0.35",
+        ax.text(lon1, y, f"{int(round(y))} N", ha="right", va="bottom", fontsize=9, color="0.35",
                 zorder=6, clip_on=True)
     cs = ax.contour(slon, slat, slp, levels=np.arange(960, 1060, 4), colors="k", linewidths=0.8, zorder=4)
-    ax.clabel(cs, fmt="%d", fontsize=7, inline=True, inline_spacing=3)
+    ax.clabel(cs, fmt="%d", fontsize=9, inline=True, inline_spacing=3)
     ct = ax.contour(tlon, tlat, t850, levels=np.arange(-30, 37, 3), colors="#d94a38", linewidths=0.7, zorder=5)
-    ax.clabel(ct, fmt="%d", fontsize=7, inline=True, inline_spacing=2)
+    ax.clabel(ct, fmt="%d", fontsize=9, inline=True, inline_spacing=2)
     ax.set_autoscale_on(False)
     ax.set_xlim(lon0, lon1)
     ax.set_ylim(lat0, lat1)
@@ -579,7 +591,7 @@ def save_pcp6_map(path, rlon, rlat, qpf, slon, slat, slp, tlon, tlat, t850, star
     ax.set_yticks([])
     for spine in ax.spines.values():
         spine.set_linewidth(0.6)
-    ax.text(0.012, 0.012, "AI-Weather-Guy", transform=ax.transAxes, fontsize=9, fontweight="bold",
+    ax.text(0.012, 0.012, "AI-Weather-Guy", transform=ax.transAxes, fontsize=11, fontweight="bold",
             color="0.45", style="italic", zorder=8)
     init = datetime.fromisoformat(start.replace("Z", "+00:00"))
     valid = init + timedelta(hours=hour)
@@ -587,28 +599,23 @@ def save_pcp6_map(path, rlon, rlat, qpf, slon, slat, slp, tlon, tlat, t850, star
         0.012, 0.965,
         f"WN3 64-mem mean • Init {init:%H}z {init.day} {init:%b %Y} • "
         "6-h Precip (in.), MSLP (hPa), 850 mb Temp (°C)",
-        fontsize=9, va="center",
+        fontsize=11, va="center",
     )
     fig.text(
         0.988, 0.965,
         f"Hour: {hour} • Valid: {valid:%H}z {valid:%a} {valid.day} {valid:%b %Y}",
-        fontsize=9, fontweight="bold", ha="right", va="center",
+        fontsize=11, fontweight="bold", ha="right", va="center",
     )
-    cax = fig.add_axes([0.02, 0.028, 0.70, 0.018])
-    cb = fig.colorbar(
-        plt.cm.ScalarMappable(norm=norm, cmap=cmap), cax=cax, orientation="horizontal",
-        ticks=pal["ticks"], extend="max",
-    )
-    cb.ax.set_xticklabels([f"{v:g}" for v in pal["ticks"]])
-    cb.ax.xaxis.set_ticks_position("top")
-    cb.ax.tick_params(labelsize=6, length=0, pad=1)
-    cb.outline.set_linewidth(0.5)
     inside = np.ix_((rlat >= lat0) & (rlat <= lat1), (rlon >= lon0) & (rlon <= lon1))
     finite = qpf[inside]
     finite = finite[np.isfinite(finite)]
+    _right_colorbar(fig, ax, norm, cmap, pal["ticks"], pal["label"], [f"{v:g}" for v in pal["ticks"]])
+    ax.set_autoscale_on(False)
+    ax.set_xlim(lon0, lon1)
+    ax.set_ylim(lat0, lat1)
     if finite.size:
-        fig.text(0.985, 0.034, f"Max: {finite.max():.2f}", fontsize=10, fontweight="bold",
-                 ha="right", va="center")
+        fig.text(0.985, 0.012, f"Max: {finite.max():.2f}", fontsize=12, fontweight="bold",
+                 ha="right", va="bottom")
     tmp = cook.staged_path(path.name)
     fig.savefig(tmp, facecolor="white", dpi=130)
     plt.close(fig)
