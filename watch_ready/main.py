@@ -7,11 +7,13 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import sys
 import urllib.error
 import urllib.parse
 import urllib.request
 from datetime import datetime, timedelta, timezone
+from zoneinfo import ZoneInfo
 
 PROJECT = "weathernext3-joros"
 ZONE = "us-east1-b"
@@ -50,16 +52,47 @@ def decide(
 
 
 def _newest(ready: list[str]) -> str:
-    return max(ready) if ready else "none"
+    return max(ready) if ready else ""
 
 
-def _six(ready: list[str], published: str, label: str) -> str:
+def _run_label(iso: str) -> str:
+    if not iso:
+        return "—"
+    return f"{int(iso[8:10])} Oct {iso[11:13]}Z"
+
+
+def _clock(when: str) -> str:
+    dt = datetime.strptime(when, "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=timezone.utc)
+    return dt.astimezone(ZoneInfo("America/Los_Angeles")).strftime("%b %-d, %-I:%M %p PT")
+
+
+def _cell(label: str, iso: str, mark: str = "") -> str:
+    text = f"{label} {_run_label(iso)}"
+    if mark:
+        text += f" {mark}"
+    return text.ljust(26)
+
+
+def _row(label: str, rest: str) -> str:
+    return f"  {label:<14}{rest.rstrip()}"
+
+
+def _field(ready: list[str], published: str) -> tuple[str, str]:
     got = _newest(ready)
-    if got == "none":
-        return f"{label} none"
-    if got > (published or ""):
-        return f"{label} {got} new"
-    return f"{label} {got} already on page"
+    mark = "new" if got and got > (published or "") else ""
+    return got, mark
+
+
+def _action(action: str) -> str:
+    action = re.sub(r"\d{4}-\d{2}-\d{2}T\d{2}:00:00Z", lambda m: _run_label(m.group(0)), action)
+    action = action.replace("synoptic ", "6-hour ").replace("ensemble ", "upper air ")
+    if action == "no cook":
+        return "no cook"
+    if action.startswith("cook started (") and action.endswith(")"):
+        return "started a cook: " + action[len("cook started ("):-1]
+    if "cook already going" in action:
+        return "cook already running"
+    return action
 
 
 def check_line(
@@ -72,13 +105,77 @@ def check_line(
     ensemble_init: str,
     action: str,
 ) -> str:
-    return (
-        f"{when} check  google {_six(stats_ready, hourly_init, 'surface')}, "
-        f"{_six(syn_ready, synoptic_init, 'synoptic')}, "
-        f"{_six(ens_ready, ensemble_init, 'ensemble')} | "
-        f"page hourly {hourly_init or 'none'}, synoptic {synoptic_init or 'none'}, "
-        f"ensemble {ensemble_init or 'none'} | {action}"
+    fields = (
+        ("surface", stats_ready, hourly_init),
+        ("6-hour", syn_ready, synoptic_init),
+        ("upper air", ens_ready, ensemble_init),
     )
+    google = []
+    page = []
+    for label, ready, published in fields:
+        got, mark = _field(ready, published)
+        google.append(_cell(label, got, mark))
+        page.append(_cell(label, published))
+    return "\n".join([
+        _clock(when),
+        _row("Google", "".join(google)),
+        _row("Page", "".join(page)),
+        _row("Result", _action(action)),
+    ])
+
+
+def note_block(when: str, text: str) -> str:
+    text = re.sub(r"\d{4}-\d{2}-\d{2}T\d{2}:00:00Z", lambda m: _run_label(m.group(0)), text)
+    text = text.replace("surface hourly ", "surface ")
+    text = text.replace("synoptic ", "6-hour ")
+    text = text.replace("ensemble ", "upper air ")
+    text = text.replace("COOK_STATUS=updated", "drew new maps")
+    text = text.replace("COOK_STATUS=noop", "already drawn")
+    text = text.replace(" already on page", " already on the page")
+    text = re.sub(r"\s+", " ", text).strip()
+    return "\n".join([_clock(when), _row("Cook", text)])
+
+
+def _legacy_block(line: str) -> str:
+    cook = re.match(r"^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z) cook\s+(.*)$", line.strip())
+    if cook:
+        return note_block(cook.group(1), cook.group(2))
+    check = re.match(
+        r"^(?P<when>\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z) check  google surface (?P<gs>.+?), "
+        r"synoptic (?P<gy>.+?), ensemble (?P<ge>.+?) \| page hourly (?P<ph>.+?), "
+        r"synoptic (?P<py>.+?), ensemble (?P<pe>.+?) \| (?P<action>.+)$",
+        line.strip(),
+    )
+    if not check:
+        return line.strip()
+
+    def one(raw: str) -> list[str]:
+        raw = raw.replace(" already on page", "").strip()
+        return [] if raw == "none" else [raw]
+
+    return check_line(
+        check.group("when"),
+        one(check.group("gs")),
+        one(check.group("gy")),
+        one(check.group("ge")),
+        one(check.group("ph"))[0] if one(check.group("ph")) else "",
+        one(check.group("py"))[0] if one(check.group("py")) else "",
+        one(check.group("pe"))[0] if one(check.group("pe")) else "",
+        check.group("action"),
+    )
+
+
+def _normalize(text: str) -> list[str]:
+    out = []
+    for para in text.split("\n\n"):
+        lines = [ln for ln in para.splitlines() if ln.strip()]
+        if not lines:
+            continue
+        if all(re.match(r"^\d{4}-\d{2}-\d{2}T", ln) for ln in lines):
+            out.extend(_legacy_block(ln) for ln in lines)
+        else:
+            out.append(para.strip("\n"))
+    return out
 
 
 def _run_iso(stamp: datetime) -> str:
@@ -188,13 +285,14 @@ def _log_text(token: str) -> tuple[str, str]:
     return text, generation
 
 
-def append_log(token: str, line: str) -> None:
-    """Keep the last 400 lines. One lost line on a clash is fine; the next check rewrites it."""
+def _log_body(text: str, line: str) -> bytes:
+    blocks = _normalize(text)
+    blocks.append(line.strip("\n"))
+    return ("\n\n".join(blocks[-200:]) + "\n").encode()
+
+
+def _put_log(token: str, generation: str, payload: bytes) -> None:
     name = urllib.parse.quote(LOG_OBJECT, safe="")
-    text, generation = _log_text(token)
-    lines = [ln for ln in text.splitlines() if ln.strip()]
-    lines.append(line)
-    payload = ("\n".join(lines[-400:]) + "\n").encode()
     url = (
         "https://storage.googleapis.com/upload/storage/v1/b/"
         f"{LOG_BUCKET}/o?uploadType=media&name={name}&ifGenerationMatch={generation}"
@@ -209,32 +307,20 @@ def append_log(token: str, line: str) -> None:
             "x-goog-user-project": PROJECT,
         },
     )
+    with urllib.request.urlopen(req, timeout=20) as resp:
+        resp.read()
+
+
+def append_log(token: str, line: str) -> None:
+    """Keep the last 200 checks. One lost line on a clash is fine; the next check rewrites it."""
+    text, generation = _log_text(token)
     try:
-        with urllib.request.urlopen(req, timeout=20) as resp:
-            resp.read()
+        _put_log(token, generation, _log_body(text, line))
     except urllib.error.HTTPError as exc:
         if exc.code != 412:
             raise
         text, generation = _log_text(token)
-        lines = [ln for ln in text.splitlines() if ln.strip()]
-        lines.append(line)
-        payload = ("\n".join(lines[-400:]) + "\n").encode()
-        url = (
-            "https://storage.googleapis.com/upload/storage/v1/b/"
-            f"{LOG_BUCKET}/o?uploadType=media&name={name}&ifGenerationMatch={generation}"
-        )
-        req = urllib.request.Request(
-            url,
-            data=payload,
-            method="POST",
-            headers={
-                "Authorization": f"Bearer {token}",
-                "Content-Type": "text/plain; charset=utf-8",
-                "x-goog-user-project": PROJECT,
-            },
-        )
-        with urllib.request.urlopen(req, timeout=20) as resp:
-            resp.read()
+        _put_log(token, generation, _log_body(text, line))
 
 
 def _start(token: str) -> int:
@@ -291,7 +377,7 @@ def watch(request):
         _record(token, line)
         return (json.dumps({"boot": boot, "reason": action}), 200)
     except Exception as exc:
-        line = f"{when} check  failed: {exc}"
+        line = "\n".join([_clock(when), _row("Result", f"failed: {exc}")])
         _record(token, line)
         return (json.dumps({"boot": False, "reason": f"check failed: {exc}"}), 200)
 
@@ -326,21 +412,29 @@ def _self_check() -> None:
         "2026-10-15T12:00:00Z", "2026-10-15T12:00:00Z", "2026-10-15T12:00:00Z",
         "no cook",
     )
-    assert "already on page" in same and "no cook" in same
+    assert "Oct 15, 11:00 AM PT" in same and "no cook" in same and "new" not in same
     new = check_line(
         "2026-10-15T19:00:00Z",
         ["2026-10-15T12:00:00Z"], ["2026-10-15T12:00:00Z"], ["2026-10-15T18:00:00Z"],
         "2026-10-15T12:00:00Z", "2026-10-15T12:00:00Z", "2026-10-15T12:00:00Z",
         "cook started (ensemble 2026-10-15T18:00:00Z)",
     )
-    assert "ensemble 2026-10-15T18:00:00Z new" in new
-    assert "synoptic 2026-10-15T12:00:00Z already on page" in new
+    assert "upper air 15 Oct 18Z new" in new
+    assert "started a cook: upper air 15 Oct 18Z" in new
+    old = _legacy_block(
+        "2026-10-15T18:58:05Z check  google surface 2026-10-15T11:00:00Z, "
+        "synoptic 2026-10-15T06:00:00Z already on page, "
+        "ensemble 2026-10-15T06:00:00Z already on page | "
+        "page hourly 2026-10-15T11:00:00Z, synoptic 2026-10-15T06:00:00Z, "
+        "ensemble 2026-10-15T06:00:00Z | no cook"
+    )
+    assert "11:58 AM PT" in old and "surface 15 Oct 11Z" in old
     print("watch decide ok")
 
 
 if __name__ == "__main__":
     if len(sys.argv) >= 3 and sys.argv[1] == "--note":
-        append_log(_token(), f"{_now()} cook   {' '.join(sys.argv[2:])}")
+        append_log(_token(), note_block(_now(), " ".join(sys.argv[2:])))
     elif len(sys.argv) == 3 and sys.argv[1] == "--dump":
         text, _gen = _log_text(_token())
         with open(sys.argv[2], "w", encoding="utf-8") as fh:
