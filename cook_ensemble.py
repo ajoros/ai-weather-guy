@@ -353,10 +353,9 @@ def _load_ivt(ds: xr.Dataset, hour: int, members: int, box):
     slp_h = slp / 100.0
     for _ in range(2):
         slp_h = slp_h.rolling(lat_0p1=11, lon_0p1=11, center=True, min_periods=1).mean()
-    slp_on = slp_h.interp(
-        lat_0p1=xr.DataArray(lat, dims="lat_0p25"),
-        lon_0p1=xr.DataArray(lon, dims="lon_0p25"),
-    )
+    # ponytail: nearest 0.1° point, not interp. interp needs scipy, which the VM lacks,
+    # and the field is already smoothed over ~1°.
+    slp_on = slp_h.sel(lat_0p1=lat, lon_0p1=lon, method="nearest")
     mag = np.hypot(acc_u, acc_v).mean(axis=0)
     return {
         "ivt": True,
