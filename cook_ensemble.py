@@ -86,7 +86,7 @@ def stats_prefix(ens_prefix: str) -> str:
 
 
 def ens_prefixes() -> list[str]:
-    now = datetime.now(timezone.utc) - timedelta(hours=8)
+    now = datetime.now(timezone.utc)
     hour = (now.hour // 6) * 6
     t = now.replace(hour=hour, minute=0, second=0, microsecond=0)
     out: list[str] = []
@@ -105,9 +105,26 @@ def open_ens(prefix: str, project_id: str) -> xr.Dataset:
     return xr.open_zarr(zarr.storage.ObjectStore(store), chunks={})
 
 
+def _ens_success(prefix: str, project_id: str) -> bool:
+    """Google writes a zero-byte success object when the run folder is complete."""
+    folder = prefix[: -len("/predictions.zarr")] if prefix.endswith("/predictions.zarr") else prefix
+    store = obstore.store.GCSStore(
+        bucket=ENS_BUCKET,
+        client_options={"default_headers": {"x-goog-user-project": project_id}},
+    )
+    try:
+        obstore.head(store, f"{folder}/success")
+        return True
+    except Exception as exc:
+        print(f"skip {folder}: no success marker ({exc.__class__.__name__})", flush=True)
+        return False
+
+
 def latest_ens(project_id: str) -> tuple[str, xr.Dataset, str]:
     last: Exception | None = None
     for prefix in ens_prefixes():
+        if not _ens_success(prefix, project_id):
+            continue
         for n in range(6):
             try:
                 ds = open_ens(prefix, project_id)

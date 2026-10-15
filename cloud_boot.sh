@@ -49,7 +49,11 @@ cd "$ROOT"
 if ! git config --global --get-all safe.directory 2>/dev/null | grep -qx "$ROOT"; then
   git config --global --add safe.directory "$ROOT"
 fi
+before=$(git rev-parse HEAD)
 git pull --ff-only origin main || echo "git pull failed; cooking with the tree already here"
+if [ "$(git rev-parse HEAD)" != "$before" ]; then
+  exec "$ROOT/cloud_boot.sh"
+fi
 
 PY="$ROOT/.venv/bin/python"
 if [ ! -x "$PY" ]; then
@@ -63,18 +67,22 @@ fi
 SITE="$ROOT/site"
 mkdir -p "$ROOT/.cache"
 
-# Surface maps from the free stats Zarr. Earth Engine is past its monthly quota.
+publish() {
+  if [ "$MODE" = "test" ]; then
+    echo "test run: not publishing"
+    return 0
+  fi
+  # deploy_pages.sh exits 0 with "nothing to publish" when no JPEG changed.
+  "$ROOT/deploy_pages.sh" || { echo "publish failed"; fail=1; }
+}
+
+# Surface maps first, so they go live while the upper-air cook is still drawing.
 "$PY" cook.py --fields core --pnw-out "$SITE/pnw" --ca-out "$SITE/ca" --nepac-out "$SITE/nepac" || { echo "surface cook failed"; fail=1; }
+publish
 
 CHECK="$("$PY" cook_ensemble.py --check --out "$SITE" --pnw-out "$SITE/pnw" --ca-out "$SITE/ca" --nepac-out "$SITE/nepac" || true)"
 echo "$CHECK"
 if echo "$CHECK" | grep -q '^COOK_STATUS=needed$'; then
   "$PY" cook_ensemble.py --out "$SITE" --pnw-out "$SITE/pnw" --ca-out "$SITE/ca" --nepac-out "$SITE/nepac" --members 64 || { echo "ensemble cook failed"; fail=1; }
-fi
-
-if [ "$MODE" = "test" ]; then
-  echo "test run: not publishing"
-else
-  # deploy_pages.sh exits 0 with "nothing to publish" when no JPEG changed.
-  "$ROOT/deploy_pages.sh" || { echo "publish failed"; fail=1; }
+  publish
 fi

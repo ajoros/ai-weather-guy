@@ -43,7 +43,8 @@ def lon360(lon: float) -> float:
 
 
 def candidate_prefixes() -> list[str]:
-    now = datetime.now(timezone.utc) - timedelta(hours=8)
+    # Current 6-hour slot first. latest_synoptic skips a file that is still writing.
+    now = datetime.now(timezone.utc)
     hour = (now.hour // 6) * 6
     t = now.replace(hour=hour, minute=0, second=0, microsecond=0)
     out: list[str] = []
