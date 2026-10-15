@@ -63,7 +63,45 @@ def _run_label(iso: str) -> str:
 
 def _clock(when: str) -> str:
     dt = datetime.strptime(when, "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=timezone.utc)
-    return dt.astimezone(ZoneInfo("America/Los_Angeles")).strftime("%b %-d, %-I:%M %p PT")
+    return dt.astimezone(ZoneInfo("America/Los_Angeles")).strftime("%b %-d, %-I:%M:%S %p PT")
+
+
+def _block_time(block: str, now: datetime) -> datetime | None:
+    first = block.splitlines()[0].strip()
+    match = re.match(
+        r"^(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec) (\d{1,2}), "
+        r"(\d{1,2}):(\d{2})(?::(\d{2}))? (AM|PM) PT$",
+        first,
+    )
+    if not match:
+        return None
+    month = datetime.strptime(match.group(1), "%b").month
+    hour = int(match.group(3)) % 12
+    if match.group(6) == "PM":
+        hour += 12
+    second = int(match.group(5) or 0)
+    pt = now.astimezone(ZoneInfo("America/Los_Angeles"))
+    when = datetime(
+        pt.year, month, int(match.group(2)), hour, int(match.group(4)), second,
+        tzinfo=ZoneInfo("America/Los_Angeles"),
+    )
+    if when - now > timedelta(days=2):
+        when = when.replace(year=pt.year - 1)
+    return when
+
+
+def _recent(blocks: list[str], now: datetime) -> list[str]:
+    """Newest first, and only the last 12 hours."""
+    cutoff = now - timedelta(hours=12)
+    ranked = []
+    for i, block in enumerate(blocks):
+        when = _block_time(block, now)
+        if when is not None and when < cutoff:
+            continue
+        stamp = when or datetime.min.replace(tzinfo=timezone.utc)
+        ranked.append((stamp, -i, block))
+    ranked.sort(reverse=True)
+    return [block for _stamp, _i, block in ranked]
 
 
 def _cell(label: str, iso: str, mark: str = "") -> str:
@@ -285,10 +323,12 @@ def _log_text(token: str) -> tuple[str, str]:
     return text, generation
 
 
-def _log_body(text: str, line: str) -> bytes:
+def _log_body(text: str, line: str, now: datetime | None = None) -> bytes:
+    now = now or datetime.now(timezone.utc)
     blocks = _normalize(text)
-    blocks.append(line.strip("\n"))
-    return ("\n\n".join(blocks[-200:]) + "\n").encode()
+    blocks.insert(0, line.strip("\n"))
+    kept = _recent(blocks, now)
+    return ("\n\n".join(kept) + "\n").encode()
 
 
 def _put_log(token: str, generation: str, payload: bytes) -> None:
@@ -412,7 +452,7 @@ def _self_check() -> None:
         "2026-10-15T12:00:00Z", "2026-10-15T12:00:00Z", "2026-10-15T12:00:00Z",
         "no cook",
     )
-    assert "Oct 15, 11:00 AM PT" in same and "no cook" in same and "new" not in same
+    assert "Oct 15, 11:00:00 AM PT" in same and "no cook" in same and "new" not in same
     new = check_line(
         "2026-10-15T19:00:00Z",
         ["2026-10-15T12:00:00Z"], ["2026-10-15T12:00:00Z"], ["2026-10-15T18:00:00Z"],
@@ -428,7 +468,21 @@ def _self_check() -> None:
         "page hourly 2026-10-15T11:00:00Z, synoptic 2026-10-15T06:00:00Z, "
         "ensemble 2026-10-15T06:00:00Z | no cook"
     )
-    assert "11:58 AM PT" in old and "surface 15 Oct 11Z" in old
+    assert "11:58:05 AM PT" in old and "surface 15 Oct 11Z" in old
+    now = datetime(2026, 10, 15, 20, 0, tzinfo=timezone.utc)
+    older = check_line(
+        "2026-10-15T18:00:00Z", [], [], [], "", "", "", "no cook",
+    )
+    newer = check_line(
+        "2026-10-15T19:30:00Z", [], [], [], "", "", "", "no cook",
+    )
+    stale = check_line(
+        "2026-10-15T06:00:00Z", [], [], [], "", "", "", "no cook",
+    )
+    ordered = _recent([older, newer, stale], now)
+    assert ordered[0].startswith("Oct 15, 12:30:00 PM PT"), ordered[0]
+    assert ordered[1].startswith("Oct 15, 11:00:00 AM PT")
+    assert len(ordered) == 2
     print("watch decide ok")
 
 
