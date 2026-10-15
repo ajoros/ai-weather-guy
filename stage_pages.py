@@ -56,6 +56,9 @@ def stage(site: Path, dest: Path, *, root: bool = True) -> int:
         logo = site / "logo-mark.png"
         if logo.is_file():
             shutil.copy2(logo, dest / "logo-mark.png")
+        watch = site / "watch.log"
+        if watch.is_file():
+            shutil.copy2(watch, dest / "watch.log")
         (dest / ".nojekyll").write_text("", encoding="utf-8")
     manifest_path = site / "manifest.json"
     if manifest_path.stat().st_size == 0:

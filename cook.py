@@ -1344,6 +1344,9 @@ def cook_one(
             if not hour_fresh(h, field_ids, out, extras, init_s)
         }
     skipped = len(targets) - len(need)
+    if not need:
+        print(f"  already on page {init_s} ({skipped} leads)", flush=True)
+        return 0
     if skipped:
         print(f"  skip {skipped} leads already stamped {init_s}", flush=True)
     precip_hours: set[int] = set()

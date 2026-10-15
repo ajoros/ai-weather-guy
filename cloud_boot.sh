@@ -67,22 +67,37 @@ fi
 SITE="$ROOT/site"
 mkdir -p "$ROOT/.cache"
 
+note() {
+  "$PY" "$ROOT/watch_ready/main.py" --note "$*" || echo "watch log failed: $*"
+}
+
 publish() {
   if [ "$MODE" = "test" ]; then
     echo "test run: not publishing"
     return 0
   fi
+  "$PY" "$ROOT/watch_ready/main.py" --dump "$SITE/watch.log" || echo "watch log dump failed"
   # deploy_pages.sh exits 0 with "nothing to publish" when no JPEG changed.
   "$ROOT/deploy_pages.sh" || { echo "publish failed"; fail=1; }
 }
 
 # Surface maps first, so they go live while the upper-air cook is still drawing.
-"$PY" cook.py --fields core --pnw-out "$SITE/pnw" --ca-out "$SITE/ca" --nepac-out "$SITE/nepac" || { echo "surface cook failed"; fail=1; }
+set -o pipefail
+"$PY" cook.py --fields core --pnw-out "$SITE/pnw" --ca-out "$SITE/ca" --nepac-out "$SITE/nepac" 2>&1 | tee "$ROOT/.cache/surface-cook.txt" || { echo "surface cook failed"; fail=1; }
+set +o pipefail
+hourline=$(grep '^hourly ' "$ROOT/.cache/surface-cook.txt" | tail -1)
+st=$(grep '^COOK_STATUS=' "$ROOT/.cache/surface-cook.txt" | tail -1)
+note "surface ${hourline:-unknown} ${st:-}"
 publish
 
 CHECK="$("$PY" cook_ensemble.py --check --out "$SITE" --pnw-out "$SITE/pnw" --ca-out "$SITE/ca" --nepac-out "$SITE/nepac" || true)"
 echo "$CHECK"
-if echo "$CHECK" | grep -q '^COOK_STATUS=needed$'; then
+ens=$(printf '%s\n' "$CHECK" | sed -n 's/^ENSEMBLE_INIT=//p' | tail -1)
+if printf '%s\n' "$CHECK" | grep -q '^COOK_STATUS=needed$'; then
+  note "ensemble ${ens:-unknown} start"
   "$PY" cook_ensemble.py --out "$SITE" --pnw-out "$SITE/pnw" --ca-out "$SITE/ca" --nepac-out "$SITE/nepac" --members 64 || { echo "ensemble cook failed"; fail=1; }
+  note "ensemble ${ens:-unknown} published"
   publish
+else
+  note "ensemble ${ens:-unknown} already on page"
 fi
