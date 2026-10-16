@@ -59,39 +59,53 @@ else
   git -C "$WORK" reset --hard FETCH_HEAD
 fi
 
-echo "staging JPEGs from $SITE" >&2
-"$PY" "$ROOT/runs_status.py"
-"$PY" "$ROOT/stage_pages.py" "$SITE" "$WORK"
-if [ ! -s "$WORK/manifest.json" ]; then
-  echo "published manifest is missing; refusing to replace the live site" >&2
-  exit 1
-fi
+published=0
+stage_and_push() {
+  echo "staging JPEGs from $SITE" >&2
+  "$PY" "$ROOT/runs_status.py"
+  "$PY" "$ROOT/stage_pages.py" "$SITE" "$WORK"
+  if [ ! -s "$WORK/manifest.json" ]; then
+    echo "published manifest is missing; refusing to replace the live site" >&2
+    return 1
+  fi
 
-git -C "$WORK" add -A
-if git -C "$WORK" diff --cached --quiet; then
-  echo "nothing to publish" >&2
-  exit 0
-fi
-if ! git -C "$WORK" remote get-url origin >/dev/null 2>&1; then
-  git -C "$WORK" remote add origin "$ORIGIN"
-fi
-TREE=$(git -C "$WORK" write-tree)
-EXPECTED=""
-if git -C "$WORK" rev-parse --verify HEAD >/dev/null 2>&1; then
-  EXPECTED=$(git -C "$WORK" rev-parse HEAD)
-fi
-COMMIT=$(git -C "$WORK" commit-tree "$TREE" -m "Publish WeatherNext 3 maps for github.io") || exit 1
-if [ -z "$COMMIT" ]; then
-  echo "publish commit was not created" >&2
-  exit 1
-fi
-if [ -n "$EXPECTED" ]; then
-  git -C "$WORK" push --force-with-lease=refs/heads/gh-pages:"$EXPECTED" origin "$COMMIT":refs/heads/gh-pages
-else
-  git -C "$WORK" push origin "$COMMIT":refs/heads/gh-pages
+  git -C "$WORK" add -A
+  if git -C "$WORK" diff --cached --quiet; then
+    echo "nothing to publish" >&2
+    return 0
+  fi
+  published=1
+  if ! git -C "$WORK" remote get-url origin >/dev/null 2>&1; then
+    git -C "$WORK" remote add origin "$ORIGIN"
+  fi
+  TREE=$(git -C "$WORK" write-tree)
+  EXPECTED=""
+  if git -C "$WORK" rev-parse --verify HEAD >/dev/null 2>&1; then
+    EXPECTED=$(git -C "$WORK" rev-parse HEAD)
+  fi
+  COMMIT=$(git -C "$WORK" commit-tree "$TREE" -m "Publish WeatherNext 3 maps for github.io") || return 1
+  if [ -z "$COMMIT" ]; then
+    echo "publish commit was not created" >&2
+    return 1
+  fi
+  if [ -n "$EXPECTED" ]; then
+    git -C "$WORK" push --force-with-lease=refs/heads/gh-pages:"$EXPECTED" origin "$COMMIT":refs/heads/gh-pages
+  else
+    git -C "$WORK" push origin "$COMMIT":refs/heads/gh-pages
+  fi
+}
+
+# A 5-minute log update can land while this push is in flight. Fetch once and try again.
+if ! stage_and_push; then
+  echo "publish raced the watch log; retrying" >&2
+  git -C "$WORK" fetch --depth 1 origin gh-pages
+  git -C "$WORK" reset --hard FETCH_HEAD
+  stage_and_push
 fi
 # Keep one commit locally. The old objects are what filled the 40 GB disk.
-git -C "$WORK" checkout -B gh-pages "$COMMIT"
+if [ "$published" = 1 ]; then
+  git -C "$WORK" checkout -B gh-pages "$COMMIT"
+fi
 git -C "$WORK" reflog expire --expire=now --all
 git -C "$WORK" gc --prune=now --quiet
 echo "done." >&2

@@ -20,6 +20,7 @@ ZONE = "us-east1-b"
 INSTANCE = "wn3-ens-cook"
 LOG_BUCKET = "weathernext3-joros-watch"
 LOG_OBJECT = "watch.log"
+REPO = "ajoros/ai-weather-guy"
 MANIFEST = "https://raw.githubusercontent.com/ajoros/ai-weather-guy/gh-pages/manifest.json"
 STATS_BUCKET = "weathernext3_statistics_spatial"
 STATS_ROOT = "weathernext_3_0_0_statistics/zarr/2026_to_present"
@@ -378,12 +379,80 @@ def _start(token: str) -> int:
         return exc.code
 
 
+def _gh(token: str, method: str, path: str, payload: dict | None = None) -> tuple[int, dict]:
+    data = None if payload is None else json.dumps(payload).encode()
+    req = urllib.request.Request(
+        f"https://api.github.com{path}",
+        data=data,
+        method=method,
+        headers={
+            "Authorization": f"Bearer {token}",
+            "Accept": "application/vnd.github+json",
+            "User-Agent": "wn3-watch",
+            "Content-Type": "application/json",
+        },
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=20) as resp:
+            body = resp.read()
+            return resp.status, json.loads(body) if body else {}
+    except urllib.error.HTTPError as exc:
+        raw = exc.read()
+        try:
+            parsed = json.loads(raw) if raw else {}
+        except json.JSONDecodeError:
+            parsed = {}
+        return exc.code, parsed
+
+
+def post_watch_page(log_text: str) -> None:
+    """Put the log on the website. One file, on top of whatever is already published."""
+    gh = os.environ.get("GH_TOKEN") or ""
+    if not gh:
+        print("watch page skipped: no github token", flush=True)
+        return
+    for _ in range(3):
+        code, ref = _gh(gh, "GET", f"/repos/{REPO}/git/ref/heads/gh-pages")
+        if code != 200:
+            raise RuntimeError(f"gh ref {code}")
+        parent = ref["object"]["sha"]
+        code, commit = _gh(gh, "GET", f"/repos/{REPO}/git/commits/{parent}")
+        if code != 200:
+            raise RuntimeError(f"gh commit {code}")
+        code, blob = _gh(gh, "POST", f"/repos/{REPO}/git/blobs", {"content": log_text, "encoding": "utf-8"})
+        if code not in (200, 201):
+            raise RuntimeError(f"gh blob {code}")
+        code, tree = _gh(gh, "POST", f"/repos/{REPO}/git/trees", {
+            "base_tree": commit["tree"]["sha"],
+            "tree": [{"path": "watch.log", "mode": "100644", "type": "blob", "sha": blob["sha"]}],
+        })
+        if code not in (200, 201):
+            raise RuntimeError(f"gh tree {code}")
+        code, made = _gh(gh, "POST", f"/repos/{REPO}/git/commits", {
+            "message": "Update the watch log",
+            "tree": tree["sha"],
+            "parents": [parent],
+        })
+        if code not in (200, 201):
+            raise RuntimeError(f"gh commit create {code}")
+        code, _updated = _gh(gh, "PATCH", f"/repos/{REPO}/git/refs/heads/gh-pages", {"sha": made["sha"]})
+        if code == 200:
+            return
+    raise RuntimeError("watch page raced a map publish")
+
+
 def _record(token: str, line: str) -> None:
     print(line, flush=True)
     try:
         append_log(token, line)
     except Exception as exc:
         print(f"watch log failed: {exc}", flush=True)
+        return
+    try:
+        text, _gen = _log_text(token)
+        post_watch_page(text)
+    except Exception as exc:
+        print(f"watch page failed: {exc}", flush=True)
 
 
 def watch(request):
