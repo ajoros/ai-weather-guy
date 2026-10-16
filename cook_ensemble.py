@@ -239,6 +239,13 @@ def resolve_merge_init(forced: str, out: Path, field_ids: list[str]) -> str:
     return ""
 
 
+def _stamp(fid: str, start: str) -> str:
+    # ponytail: "|jet" redraws 500/300/200 once after the wind restyle, then matches.
+    if fid in ("h500", "wind300", "wind200"):
+        return start + "|jet"
+    return start
+
+
 def _fresh(dest: Path, start: str) -> bool:
     stamp = dest.with_suffix(".init")
     try:
@@ -675,14 +682,13 @@ def _load_field(ds: xr.Dataset, start: str, hour: int, fid: str, members: int, b
     marks = None
     note = "  64-mean" if members >= 64 else f"  {members}-mem"
     if fid == "h500":
-        # ponytail: Pivotal 500H = wind-speed fill (kt) + height contours, not vorticity.
         da = mean_level(ds, "geopotential", hour, 500, members, box)
         lon, lat, uu, vv = load_uv(ds, hour, 500, members, box)
         z = ms_to_kt(np.hypot(uu, vv))
         contour_z = phi_to_dam(np.asarray(da))
         contours = np.arange(468, 613, 3)
         barbs = (lon, lat, uu * KT, vv * KT)
-        note += " + wind + 3 dam + barbs"
+        note += " + 3 dam + barbs"
     elif fid == "t850":
         da = mean_level(ds, "temperature", hour, 850, members, box)
         lon, lat, uu, vv = load_uv(ds, hour, 850, members, box)
@@ -705,11 +711,13 @@ def _load_field(ds: xr.Dataset, start: str, hour: int, fid: str, members: int, b
         z = ms_to_kt(np.hypot(uu, vv))
         barbs = (lon, lat, uu * KT, vv * KT)
         note += " + barbs"
-        if fid == "wind500":
-            h = mean_level(ds, "geopotential", hour, 500, members, box)
+        if fid in ("wind300", "wind200"):
+            lev = WIND_LEVEL[fid]
+            h = mean_level(ds, "geopotential", hour, lev, members, box)
             contour_z = phi_to_dam(np.asarray(h))
-            contours = np.arange(468, 613, 6)
-            note += " + 500H 6 dam"
+            lo, hi = (780, 1026) if fid == "wind300" else (1050, 1296)
+            contours = np.arange(lo, hi, 6)
+            note += f" + {lev}H 6 dam"
     title = plot_title(label, note, valid_dt, start, hour)
     return {
         "lon": lon,
@@ -739,11 +747,12 @@ def plot_one(
     loaded: dict | None = None,
 ) -> str:
     crops = crops or []
-    need_wide = force or not _fresh(dest, start)
+    key = _stamp(fid, start)
+    need_wide = force or not _fresh(dest, key)
     need = [
         (name, crop_dest)
         for name, crop_dest, crop_force in crops
-        if crop_force or not _fresh(crop_dest, start)
+        if crop_force or not _fresh(crop_dest, key)
     ]
     if not need_wide and not need:
         return f"skip {fid} f{hour:03d}"
@@ -769,10 +778,10 @@ def plot_one(
             )
             if dest.stat().st_size < 1000:
                 raise RuntimeError(f"tiny PNG {dest}")
-            dest.with_suffix(".init").write_text(start + "\n")
+            dest.with_suffix(".init").write_text(key + "\n")
         for name, crop_dest in need:
             _save_ivt_crop(
-                name, crop_dest, start, hour, lon, lat, z,
+                name, crop_dest, key, hour, lon, lat, z,
                 loaded["ivt_u"], loaded["ivt_v"], contour_z,
             )
         return f"ok {fid} f{hour:03d}"
@@ -784,10 +793,10 @@ def plot_one(
             )
             if dest.stat().st_size < 1000:
                 raise RuntimeError(f"tiny PNG {dest}")
-            dest.with_suffix(".init").write_text(start + "\n")
+            dest.with_suffix(".init").write_text(key + "\n")
         for name, crop_dest in need:
             _save_pcp6_crop(
-                name, crop_dest, start, hour, lon, lat, z,
+                name, crop_dest, key, hour, lon, lat, z,
                 loaded["slp_lon"], loaded["slp_lat"], loaded["slp"],
                 loaded["t_lon"], loaded["t_lat"], loaded["t850"],
             )
@@ -810,12 +819,12 @@ def plot_one(
         )
         if dest.stat().st_size < 1000:
             raise RuntimeError(f"tiny PNG {dest}")
-        dest.with_suffix(".init").write_text(start + "\n")
+        dest.with_suffix(".init").write_text(key + "\n")
     for name, crop_dest in need:
         _save_crop(
             name,
             crop_dest,
-            start,
+            key,
             lon,
             lat,
             z,
@@ -1008,6 +1017,10 @@ def _self_check() -> None:
     ).endswith("20261014_18hr_01_preds/predictions.zarr")
     assert ENSEMBLE_IDS[0] == "ivt"
     assert ENSEMBLE_IDS[1] == "pcp6"
+    assert _stamp("h500", "2026-10-16T18:00:00Z").endswith("|jet")
+    assert _stamp("ivt", "2026-10-16T18:00:00Z") == "2026-10-16T18:00:00Z"
+    assert "wind200" in ENSEMBLE_IDS and "wind500" not in ENSEMBLE_IDS
+    assert not any(i.startswith("rh") for i in ENSEMBLE_IDS)
     pcp = cook.PALETTES["pcp6"]["bounds"]
     assert (pcp[6], pcp[7], pcp[8], pcp[10]) == (0.5, 0.7, 0.9, 1.4)
     print("ensemble parallel ok", DRAW_WORKERS)
@@ -1141,11 +1154,12 @@ def main() -> None:
 
     def must_draw(hour: int, fid: str) -> bool:
         dest = args.out / f"frames/{fid}/f{hour:03d}.png"
-        if args.force or not _fresh(dest, init):
+        key = _stamp(fid, init)
+        if args.force or not _fresh(dest, key):
             return True
         for _name, crop_out in _crop_outs(args):
             cdest = crop_out / f"frames/{fid}/f{hour:03d}.png"
-            if crop_force[_name] or not _fresh(cdest, init):
+            if crop_force[_name] or not _fresh(cdest, key):
                 return True
         return False
 

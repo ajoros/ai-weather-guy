@@ -77,16 +77,22 @@ def main() -> None:
         assert not cook.hour_fresh(54, ["slp", "wind10"], wide, [("pnw", pnw)], init)
     assert "AI-Weather-Guy" in WATERMARK and "ajoros.github.io" in WATERMARK
     assert "WeatherNext 3" in WATERMARK
-    assert FIELDS["h500"][4] == "wind_kt_pw" and FIELDS["t850"][4] == "tmp_c"
-    assert FIELDS["wind300"][4] == FIELDS["wind925"][4] == FIELDS["wind700"][4] == FIELDS["wind500"][4] == "wind_kt"
+    assert FIELDS["h500"][4] == "wind_kt_500" and FIELDS["t850"][4] == "tmp_c"
+    assert FIELDS["wind300"][4] == FIELDS["wind200"][4] == "wind_kt_jet"
+    assert FIELDS["wind925"][4] == FIELDS["wind700"][4] == "wind_kt"
+    assert list(cook.PALETTES["wind_kt_500"]["bounds"])[:3] == [12, 16, 20]
+    assert list(cook.PALETTES["wind_kt_500"]["bounds"])[-1] == 145
+    assert list(cook.PALETTES["wind_kt_jet"]["bounds"])[0] == 18
+    assert list(cook.PALETTES["wind_kt_jet"]["bounds"])[-1] == 234
     assert cook.RH_LEVEL == {"rh925": 925, "rh850": 850, "rh700": 700, "rh500": 500}
     assert ENSEMBLE_IDS[0] == "ivt"
     assert ENSEMBLE_IDS[1] == "pcp6"
+    assert "wind200" in ENSEMBLE_IDS and "wind500" not in ENSEMBLE_IDS
     assert cook.PALETTES["pcp6"]["bounds"][6] == 0.5
     assert cook.PALETTES["pcp6"]["bounds"][7] == 0.7
     assert cook.PALETTES["pcp6"]["bounds"][8] == 0.9
     assert cook.PALETTES["pcp6"]["bounds"][10] == 1.4
-    assert [i for i in ENSEMBLE_IDS if i.startswith("rh")] == list(cook.RH_LEVEL)
+    assert [i for i in ENSEMBLE_IDS if i.startswith("rh")] == []
     assert all(FIELDS[i][4] == "rh_pct" for i in cook.RH_LEVEL)
     assert ensemble_floor_lead(1) == 6
     assert ensemble_floor_lead(5) == 6

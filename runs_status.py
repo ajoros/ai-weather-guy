@@ -26,12 +26,8 @@ RUN_LABELS = {
     "t850": "850T",
     "wind925": "925 wind",
     "wind700": "700 wind",
-    "wind500": "500 wind",
     "wind300": "300 wind",
-    "rh925": "925 RH",
-    "rh850": "850 RH",
-    "rh700": "700 RH",
-    "rh500": "500 RH",
+    "wind200": "200 wind",
 }
 
 

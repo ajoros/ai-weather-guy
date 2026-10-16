@@ -622,6 +622,41 @@ PALETTES: dict[str, dict] = {
         "bad": "#ffffff",
         "extend": "max",
     },
+    # WeatherBell-style 500 mb wind speed. Light gray through blue, green, yellow, red, brown.
+    "wind_kt_500": {
+        "colors": [
+            "#f4f4f4", "#d4d4d4", "#a3a3a3", "#6b6b6b",
+            "#3d66d6", "#2a62c8", "#2a96d4", "#3ec4c8",
+            "#3ec878", "#8ad840", "#e6dc18", "#f0a000",
+            "#e84800", "#c81818", "#8c4030", "#d07070",
+        ],
+        "bounds": np.array(
+            [12, 16, 20, 28, 36, 44, 52, 60, 68, 76, 85, 95, 105, 115, 125, 135, 145],
+            dtype=float,
+        ),
+        "label": "kt",
+        "ticks": np.array(
+            [12, 16, 20, 28, 36, 44, 52, 60, 68, 76, 85, 95, 105, 115, 125, 135, 145],
+            dtype=float,
+        ),
+        "bad": "#ffffff",
+        "extend": "max",
+    },
+    # Shared 200/300 mb wind speed. Same colors, stretched to 234 kt.
+    "wind_kt_jet": {
+        "colors": [
+            "#f4f4f4", "#d0d0d0", "#9a9a9a", "#5e5e5e",
+            "#3a62d4", "#2a78d0", "#2aa8dc", "#3ec8a8",
+            "#4ed060", "#b0e028", "#f0dc00", "#f0a000",
+            "#e85000", "#d02020", "#8c3830", "#c88878",
+            "#e8a0a0", "#c02020",
+        ],
+        "bounds": np.arange(18.0, 235.0, 12.0),
+        "label": "kt",
+        "ticks": np.arange(18.0, 235.0, 12.0),
+        "bad": "#ffffff",
+        "extend": "max",
+    },
 }
 
 
@@ -651,12 +686,13 @@ FIELD_ROWS = [
     ("slp", "Mean sea-level pressure", "mean_sea_level_pressure_mean", pa_to_hpa, "slp", "0p1", 0),
     ("wind10", "10 m wind speed", "wind_speed_10m_mean", ms_to_mph, "wind_mph", "0p1", 0),
     ("wind10_p90", "10 m wind p90 (gust proxy)", "wind_speed_10m_p90", ms_to_mph, "wind_mph", "0p1", 0),
-    ("h500", "500 mb height", "geopotential", phi_to_dam, "wind_kt_pw", "0p25", 0),
+    ("h500", "500 mb height and wind", "geopotential", phi_to_dam, "wind_kt_500", "0p25", 0),
     ("t850", "850 mb temperature", "temperature", k_to_c, "tmp_c", "0p25", 0),
     ("wind925", "925 mb wind", "u_component_of_wind", ms_to_kt, "wind_kt", "0p25", 0),
     ("wind700", "700 mb wind", "u_component_of_wind", ms_to_kt, "wind_kt", "0p25", 0),
     ("wind500", "500 mb wind", "u_component_of_wind", ms_to_kt, "wind_kt", "0p25", 0),
-    ("wind300", "300 mb wind", "u_component_of_wind", ms_to_kt, "wind_kt", "0p25", 0),
+    ("wind300", "300 mb height and wind", "u_component_of_wind", ms_to_kt, "wind_kt_jet", "0p25", 0),
+    ("wind200", "200 mb height and wind", "u_component_of_wind", ms_to_kt, "wind_kt_jet", "0p25", 0),
     ("rh925", "925 mb relative humidity", "specific_humidity", specific_humidity_to_rh, "rh_pct", "0p25", 0),
     ("rh850", "850 mb relative humidity", "specific_humidity", specific_humidity_to_rh, "rh_pct", "0p25", 0),
     ("rh700", "700 mb relative humidity", "specific_humidity", specific_humidity_to_rh, "rh_pct", "0p25", 0),
@@ -678,15 +714,11 @@ ENSEMBLE_IDS = [
     "t850",
     "wind925",
     "wind700",
-    "wind500",
     "wind300",
-    "rh925",
-    "rh850",
-    "rh700",
-    "rh500",
+    "wind200",
 ]
 PAGE_IDS = CORE_IDS + ENSEMBLE_IDS
-WIND_LEVEL = {"wind925": 925, "wind700": 700, "wind500": 500, "wind300": 300}
+WIND_LEVEL = {"wind925": 925, "wind700": 700, "wind500": 500, "wind300": 300, "wind200": 200}
 RH_LEVEL = {"rh925": 925, "rh850": 850, "rh700": 700, "rh500": 500}
 PT = ZoneInfo("America/Los_Angeles")
 
